@@ -1,0 +1,6 @@
+{
+  "name": "Phonics Forest",
+  "description": "An educational app for kids to practice phonemes with 3-letter words. Features a forest UI with monkeys and letter cards.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
