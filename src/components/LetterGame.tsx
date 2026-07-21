@@ -27,7 +27,7 @@ const foodStickers: FoodSticker[] = [
   { id: "chocolate", emoji: "🍫", name: "Chocolate", color: "bg-[#D6B08B]" },
   { id: "cookie", emoji: "🍪", name: "Cookie", color: "bg-[#F6C77E]" },
   { id: "strawberry", emoji: "🍓", name: "Strawberry", color: "bg-[#FFB4AE]" },
-  { id: "pineapple-bun", emoji: "🍞", name: "菠蘿包", color: "bg-[#FFE69A]" },
+  { id: "pineapple-bun", emoji: "🍞", name: "Pineapple Bun", color: "bg-[#FFE69A]" },
   { id: "mushroom", emoji: "🍄", name: "Mushroom", color: "bg-[#E8D8C9]" },
   { id: "peach", emoji: "🍑", name: "Peach", color: "bg-[#FFC9A9]" },
 ];
@@ -655,25 +655,33 @@ export function LetterGame({
               </div>
             </div>
 
-            <div className="mt-5 flex min-h-24 w-full max-w-3xl flex-wrap items-center justify-center gap-3 rounded-[2rem] border-4 border-dashed border-[#1A2F33] bg-white/75 p-3" aria-label="Puzzle pieces tray">
-              {pieceOrder.filter((pieceIndex) => earnedPieces.includes(pieceIndex) && !placedPieces.includes(pieceIndex)).map((pieceIndex) => (
-                <motion.button
-                  key={pieceIndex}
-                  type="button"
-                  drag={!puzzleLocked}
-                  dragMomentum={false}
-                  dragSnapToOrigin
-                  whileDrag={{ scale: 1.12, zIndex: 50 }}
-                  onClick={() => setActivePiece(pieceIndex)}
-                  onDragEnd={(_, info) => handlePieceDrop(pieceIndex, info.point.x, info.point.y)}
-                  disabled={puzzleLocked}
-                  className={`relative h-20 w-20 touch-none rounded-xl border-[4px] border-[#1A2F33] shadow-[0_5px_0_#1A2F33] sm:h-24 sm:w-24 ${activePiece === pieceIndex ? "ring-4 ring-[#FF9F68]" : ""}`}
-                  aria-label={`Puzzle piece ${pieceIndex + 1}. Drag it to space ${pieceIndex + 1}`}
-                >
-                  <PuzzleSlice sticker={favoriteSticker} pieceIndex={pieceIndex} />
-                </motion.button>
-              ))}
-              {placedPieces.length === 8 && <span className="font-fredoka text-2xl font-black text-[#16834B]">Puzzle complete!</span>}
+            <div className="mt-5 w-full max-w-2xl rounded-[2rem] border-[7px] border-dashed border-[#1A2F33] bg-white/75 p-2 shadow-[0_10px_0_#1A2F33] sm:p-3" aria-label="Puzzle pieces tray">
+              <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                {pieceOrder.map((pieceIndex) => {
+                  const isAvailable = earnedPieces.includes(pieceIndex) && !placedPieces.includes(pieceIndex);
+
+                  return isAvailable ? (
+                    <motion.button
+                      key={pieceIndex}
+                      type="button"
+                      drag={!puzzleLocked}
+                      dragMomentum={false}
+                      dragSnapToOrigin
+                      whileDrag={{ scale: 1.12, zIndex: 50 }}
+                      onClick={() => setActivePiece(pieceIndex)}
+                      onDragEnd={(_, info) => handlePieceDrop(pieceIndex, info.point.x, info.point.y)}
+                      disabled={puzzleLocked}
+                      className={`relative aspect-square w-full touch-none overflow-hidden rounded-xl border-[3px] border-[#1A2F33] ${activePiece === pieceIndex ? "ring-4 ring-[#FF9F68]" : ""}`}
+                      aria-label={`Puzzle piece ${pieceIndex + 1}. Drag it to space ${pieceIndex + 1}`}
+                    >
+                      <PuzzleSlice sticker={favoriteSticker} pieceIndex={pieceIndex} />
+                    </motion.button>
+                  ) : (
+                    <div key={pieceIndex} className="aspect-square w-full rounded-xl border-[3px] border-dashed border-[#AAC1C4] bg-white/30" aria-hidden="true" />
+                  );
+                })}
+              </div>
+              {placedPieces.length === 8 && <span className="mt-3 block text-center font-fredoka text-2xl font-black text-[#16834B]">Puzzle complete!</span>}
             </div>
           </section>
         )}
