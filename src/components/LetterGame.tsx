@@ -8,7 +8,6 @@ import {
   playRewardSound,
   speakText,
 } from "../utils/audio";
-import { BearHost } from "./BearHost";
 
 import forestBg from "../assets/images/cartoon_forest_bg_1784540338051.jpg";
 
@@ -35,9 +34,9 @@ const foodStickers: FoodSticker[] = [
 
 const introPrompts = [
   (letter: string) => `Ooh, here comes letter ${letter.toUpperCase()}! Listen carefully, then repeat its sound out loud!`,
-  (letter: string) => `Yay, it's ${letter.toUpperCase()}! Hear the sound, then show Benny Bear how brilliantly you can say it!`,
+  (letter: string) => `Yay, it's ${letter.toUpperCase()}! Hear the sound, then show me how brilliantly you can say it!`,
   (letter: string) => `Look, our next sound friend is ${letter.toUpperCase()}! Listen, then repeat it with your strongest phonics voice!`,
-  (letter: string) => `Wonderful, it's ${letter.toUpperCase()}! Hear the sound and say it back out loud for Benny Bear!`,
+  (letter: string) => `Wonderful, it's ${letter.toUpperCase()}! Hear the sound and say it back out loud!`,
 ];
 
 const stickerLines = [
@@ -51,7 +50,7 @@ const repeatPrompts = [
   "Your turn! Say that sound out loud, then tap the orange button. I can't wait to hear you!",
   "Now you try! Repeat the sound with your best phonics voice, then tell me you said it!",
   "Let's hear your amazing voice! Say the sound out loud, then tap “I said the sound!”",
-  "Benny Bear is listening! Repeat that sound proudly, then tap the orange button!",
+  "I'm listening! Repeat that sound proudly, then tap the orange button!",
 ];
 
 const quizPrompts = [
@@ -66,7 +65,7 @@ const correctLines = [
   "Hooray, that's the one! Your wonderful listening earned another star!",
   "You got it! That was absolutely brilliant—your star trail is sparkling!",
   "WOW! You caught that sound perfectly and won a beautiful star!",
-  "Exactly right! Benny Bear is doing a happy dance for you!",
+  "Exactly right! I'm doing a happy dance for you!",
 ];
 
 const tryAgainLines = [
@@ -224,18 +223,6 @@ export function LetterGame({
     await playCrackRewardSound();
     const line = pickFreshLine(stickerLines.map((builder) => builder(sticker.name)));
     await speakText(line, 0.98, 1.2);
-  };
-
-  const confirmRepeatedSound = async () => {
-    if (!introReady || hasRepeated || isCracked) return;
-    setIntroReady(false);
-    setHasRepeated(true);
-    await speakText("YES! I heard your super phonics voice! Now tap the card and crack it right down the middle!", 1.02, 1.26);
-    setIntroReady(true);
-  };
-
-  const moveFromIntro = async () => {
-    if (!isCracked) return;
 
     if (introIndex < learningLetters.length - 1) {
       setIsCracked(false);
@@ -247,6 +234,14 @@ export function LetterGame({
 
     await speakText("Your sticker bar is full! Now every correct sound match earns a star.", 0.96, 1.18);
     setPhase("quiz");
+  };
+
+  const confirmRepeatedSound = async () => {
+    if (!introReady || hasRepeated || isCracked) return;
+    setIntroReady(false);
+    setHasRepeated(true);
+    await speakText("YES! I heard your super phonics voice! Now tap the card and crack it right down the middle!", 1.02, 1.26);
+    setIntroReady(true);
   };
 
   const replayIntroSound = () => {
@@ -348,28 +343,43 @@ export function LetterGame({
               className="relative h-56 w-44 touch-manipulation overflow-visible disabled:cursor-default sm:h-64 sm:w-52"
               aria-label={isCracked ? `Letter ${introLetter}, split open` : `Tap letter ${introLetter} to split the card open`}
             >
-              <motion.span
-                animate={isCracked ? { x: -112, y: 12, rotate: -11 } : { x: 0, y: 0, rotate: 0 }}
-                transition={{ type: "spring", stiffness: 180, damping: 14 }}
-                className="absolute inset-y-0 left-0 block w-[53%] overflow-hidden border-[7px] border-[#1A2F33] bg-[#FFEA00] shadow-[0_12px_0_#1A2F33]"
-                style={{ clipPath: "polygon(0 0, 100% 0, 86% 13%, 100% 27%, 84% 42%, 100% 57%, 85% 72%, 100% 86%, 89% 100%, 0 100%)", borderRadius: "2.8rem 0.5rem 0.5rem 2.8rem" }}
-                aria-hidden="true"
-              >
-                <span className="absolute inset-y-0 left-0 flex w-[188%] items-center justify-center font-fredoka text-[9rem] font-black uppercase leading-none text-[#1A2F33] sm:text-[11rem]">
+              {!isCracked ? (
+                <motion.span
+                  initial={{ scale: 0.96 }}
+                  animate={{ scale: 1 }}
+                  className="absolute inset-0 flex items-center justify-center rounded-[2.8rem] border-[7px] border-[#1A2F33] bg-[#FFEA00] font-fredoka text-[9rem] font-black uppercase leading-none text-[#1A2F33] shadow-[0_12px_0_#1A2F33] sm:text-[11rem]"
+                  aria-hidden="true"
+                >
                   {introLetter}
-                </span>
-              </motion.span>
-              <motion.span
-                animate={isCracked ? { x: 112, y: 12, rotate: 11 } : { x: 0, y: 0, rotate: 0 }}
-                transition={{ type: "spring", stiffness: 180, damping: 14 }}
-                className="absolute inset-y-0 right-0 block w-[53%] overflow-hidden border-[7px] border-[#1A2F33] bg-[#FFEA00] shadow-[0_12px_0_#1A2F33]"
-                style={{ clipPath: "polygon(11% 0, 100% 0, 100% 100%, 10% 100%, 0 86%, 15% 72%, 0 57%, 16% 42%, 0 27%, 14% 13%)", borderRadius: "0.5rem 2.8rem 2.8rem 0.5rem" }}
-                aria-hidden="true"
-              >
-                <span className="absolute inset-y-0 right-0 flex w-[188%] items-center justify-center font-fredoka text-[9rem] font-black uppercase leading-none text-[#1A2F33] sm:text-[11rem]">
-                  {introLetter}
-                </span>
-              </motion.span>
+                </motion.span>
+              ) : (
+                <>
+                  <motion.span
+                    initial={{ x: 0, y: 0, rotate: 0 }}
+                    animate={{ x: -112, y: 12, rotate: -11 }}
+                    transition={{ type: "spring", stiffness: 180, damping: 14 }}
+                    className="absolute inset-y-0 left-0 block w-[53%] overflow-hidden border-[7px] border-[#1A2F33] bg-[#FFEA00] shadow-[0_12px_0_#1A2F33]"
+                    style={{ clipPath: "polygon(0 0, 100% 0, 86% 13%, 100% 27%, 84% 42%, 100% 57%, 85% 72%, 100% 86%, 89% 100%, 0 100%)", borderRadius: "2.8rem 0.5rem 0.5rem 2.8rem" }}
+                    aria-hidden="true"
+                  >
+                    <span className="absolute inset-y-0 left-0 flex w-[188%] items-center justify-center font-fredoka text-[9rem] font-black uppercase leading-none text-[#1A2F33] sm:text-[11rem]">
+                      {introLetter}
+                    </span>
+                  </motion.span>
+                  <motion.span
+                    initial={{ x: 0, y: 0, rotate: 0 }}
+                    animate={{ x: 112, y: 12, rotate: 11 }}
+                    transition={{ type: "spring", stiffness: 180, damping: 14 }}
+                    className="absolute inset-y-0 right-0 block w-[53%] overflow-hidden border-[7px] border-[#1A2F33] bg-[#FFEA00] shadow-[0_12px_0_#1A2F33]"
+                    style={{ clipPath: "polygon(11% 0, 100% 0, 100% 100%, 10% 100%, 0 86%, 15% 72%, 0 57%, 16% 42%, 0 27%, 14% 13%)", borderRadius: "0.5rem 2.8rem 2.8rem 0.5rem" }}
+                    aria-hidden="true"
+                  >
+                    <span className="absolute inset-y-0 right-0 flex w-[188%] items-center justify-center font-fredoka text-[9rem] font-black uppercase leading-none text-[#1A2F33] sm:text-[11rem]">
+                      {introLetter}
+                    </span>
+                  </motion.span>
+                </>
+              )}
 
               <AnimatePresence>
                 {newSticker && (
@@ -406,23 +416,7 @@ export function LetterGame({
                   🗣️ I SAID THE SOUND!
                 </motion.button>
               )}
-              {isCracked && (
-                <motion.button
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  type="button"
-                  onClick={moveFromIntro}
-                  className="rounded-full border-4 border-[#1A2F33] bg-[#69F0AE] px-6 py-3 font-fredoka text-lg font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33]"
-                >
-                  {introIndex === learningLetters.length - 1 ? "START STAR QUIZ →" : "NEXT LETTER →"}
-                </motion.button>
-              )}
             </div>
-            <BearHost
-              compact
-              className="bottom-0"
-              message={isCracked ? "WOW! A sticker! You were amazing!" : hasRepeated ? "Fantastic voice! Tap the card and split it open!" : "Say the sound out loud, then tap “I SAID THE SOUND!”"}
-            />
           </section>
         )}
 
@@ -466,11 +460,6 @@ export function LetterGame({
                 );
               })}
             </div>
-            <BearHost
-              compact
-              className="bottom-0"
-              message={feedback === "correct" ? "YES! You got it! I'm doing my happy dance!" : `You're doing brilliantly—${stars} star${stars === 1 ? "" : "s"} already!`}
-            />
           </section>
         )}
 
@@ -479,7 +468,6 @@ export function LetterGame({
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-8xl">⭐</motion.div>
             <h2 className="mt-2 font-fredoka text-4xl font-black text-[#1A2F33] sm:text-5xl">Level 1 Complete!</h2>
             <p className="mt-3 font-fredoka text-xl font-bold text-[#1A2F33]">You earned {stars} stars. Returning to the map…</p>
-            <BearHost compact className="bottom-0" message="You did it! I am SO happy for you!" />
           </section>
         )}
 

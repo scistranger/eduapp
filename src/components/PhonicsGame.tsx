@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { vocabs } from '../data';
 import { initAudio, pickFreshLine, playPhoneme, playRewardSound, speakText } from '../utils/audio';
-import { BearHost } from './BearHost';
-import type { FoodSticker } from './LetterGame';
 
 import forestBg from '../assets/images/cartoon_forest_bg_1784540338051.jpg';
 import dogImg from '../assets/images/dog_closeup_holding_card_solid_1784547773486.jpg';
@@ -23,9 +21,9 @@ type QuizFeedback = 'correct' | 'incorrect' | null;
 const quizLetters = ['b', 'f', 'h', 'c', 'r', 'm'];
 
 const gameWelcomeLines = [
-  "HOORAY! You unlocked the -at Word Playground! Benny Bear is so excited to build words with you!",
+  "HOORAY! You unlocked the -at Word Playground! I am so excited to build words with you!",
   "Yay, you made it to level two! Let's make amazing -at words together!",
-  "Fantastic work unlocking this trail! Benny Bear can hardly wait to hear your words!",
+  "Fantastic work unlocking this trail! I can hardly wait to hear your words!",
 ];
 
 const wordPromptLines = [
@@ -40,7 +38,7 @@ const wordPraiseLines = [
   "HOORAY! Every sound landed in exactly the right place!",
   "Amazing teamwork! You made the whole word beautifully!",
   "Fantastic! Your phonics ears are super strong!",
-  "That was brilliant! Benny Bear is so proud of you!",
+  "That was brilliant! I am so proud of you!",
 ];
 
 const vocabQuizPrompts = [
@@ -54,7 +52,7 @@ const quizPraiseLines = [
   (word: string) => `YES! You did it! ${word} starts with that sound!`,
   (word: string) => `Exactly right! You found the first sound in ${word}! Amazing!`,
   (word: string) => `HOORAY, you got it! That's how ${word} begins!`,
-  (word: string) => `Brilliant listening! Benny Bear is thrilled—that letter starts ${word}!`,
+  (word: string) => `Brilliant listening! That letter starts ${word}!`,
 ];
 
 const quizTryAgainLines = [
@@ -64,7 +62,7 @@ const quizTryAgainLines = [
   (word: string) => `Your ears get another chance. Listen: ${word}.`,
 ];
 
-export function PhonicsGame({ onExit, stickers }: { onExit: () => void; stickers: FoodSticker[] }) {
+export function PhonicsGame({ onExit }: { onExit: () => void }) {
   const [vocabIndex, setVocabIndex] = useState(0);
   const [bushes, setBushes] = useState<MonkeyData[]>([]);
   const [assembled, setAssembled] = useState<string[]>([]);
@@ -74,7 +72,6 @@ export function PhonicsGame({ onExit, stickers }: { onExit: () => void; stickers
   const [quizFeedback, setQuizFeedback] = useState<QuizFeedback>(null);
   const [quizLocked, setQuizLocked] = useState(false);
   const [quizFinished, setQuizFinished] = useState(false);
-  const [fedSticker, setFedSticker] = useState<FoodSticker | null>(null);
   const previousWordPrompt = useRef<string | null>(null);
   const previousWordPraise = useRef<string | null>(null);
   const previousQuizPrompt = useRef<string | null>(null);
@@ -88,7 +85,6 @@ export function PhonicsGame({ onExit, stickers }: { onExit: () => void; stickers
     setQuizFeedback(null);
     setQuizLocked(true);
     setQuizFinished(false);
-    if (index === 0) setFedSticker(null);
     setGameState('quiz');
     const line = pickFreshLine(vocabQuizPrompts.map((prompt) => prompt(word)), previousQuizPrompt.current);
     previousQuizPrompt.current = line;
@@ -218,14 +214,6 @@ export function PhonicsGame({ onExit, stickers }: { onExit: () => void; stickers
     setQuizLocked(false);
   };
 
-  const feedBear = async (sticker: FoodSticker) => {
-    if (fedSticker) return;
-    setFedSticker(sticker);
-    await playRewardSound();
-    const spokenName = sticker.id === 'pineapple-bun' ? 'pineapple bun' : sticker.name;
-    await speakText(`YUM! Thank you! Benny Bear absolutely loves the ${spokenName}! What a wonderful treat to finish our adventure!`, 1.0, 1.24);
-  };
-
   useEffect(() => {
     void handleStartGame();
   }, []);
@@ -252,7 +240,6 @@ export function PhonicsGame({ onExit, stickers }: { onExit: () => void; stickers
             <p className="mt-3 font-andika text-xl font-bold text-[#38545A] sm:text-2xl">Your forest guide is getting the first word ready…</p>
           </motion.div>
         </div>
-        <BearHost compact side="right" className="bottom-1" message="You unlocked Level 2! I am SO excited to build words with you!" />
       </div>
     );
   }
@@ -363,15 +350,6 @@ export function PhonicsGame({ onExit, stickers }: { onExit: () => void; stickers
           </div>
         </div>
 
-        {!quizFinished && (
-          <BearHost
-            compact
-            side="right"
-            className="bottom-1"
-            message={quizFeedback === 'correct' ? "YES! That was brilliant!" : "I'm listening with you. You've got this!"}
-          />
-        )}
-
         <AnimatePresence>
           {quizFeedback === 'correct' && !quizFinished && (
             <motion.div
@@ -409,70 +387,22 @@ export function PhonicsGame({ onExit, stickers }: { onExit: () => void; stickers
                 <h2 className="text-4xl sm:text-5xl font-fredoka font-black text-[#1A2F33] mb-1">Phonics Medal!</h2>
                 <p className="text-lg sm:text-2xl font-fredoka font-bold text-[#1A2F33] mb-5">You completed the whole forest adventure!</p>
 
-                <div className="rounded-[2rem] border-[5px] border-[#1A2F33] bg-white/95 p-4 shadow-[0_7px_0_#1A2F33]">
-                  <h3 className="font-fredoka text-xl font-black text-[#1A2F33] sm:text-3xl">
-                    Which food sticker would you like to give Benny Bear to eat?
-                  </h3>
-                  <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-8">
-                    {stickers.map((sticker) => {
-                      const isFed = fedSticker?.id === sticker.id;
-                      return (
-                        <motion.button
-                          key={sticker.id}
-                          type="button"
-                          onClick={() => void feedBear(sticker)}
-                          disabled={fedSticker !== null}
-                          whileHover={fedSticker ? undefined : { y: -6, scale: 1.05 }}
-                          whileTap={fedSticker ? undefined : { scale: 0.94 }}
-                          className={`flex min-h-20 touch-manipulation flex-col items-center justify-center rounded-2xl border-[3px] border-[#1A2F33] p-1 shadow-[0_4px_0_#1A2F33] ${sticker.color} ${fedSticker && !isFed ? 'opacity-45' : ''} ${isFed ? 'ring-4 ring-[#23B867]' : ''}`}
-                          aria-label={`Give ${sticker.name} to Benny Bear`}
-                        >
-                          <span className="text-4xl">{sticker.emoji}</span>
-                          <span className="mt-1 max-w-full truncate font-fredoka text-[10px] font-black text-[#1A2F33]">{sticker.name}</span>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-
-                  <AnimatePresence>
-                    {fedSticker && (
-                      <motion.div
-                        initial={{ scale: 0, y: 25 }}
-                        animate={{ scale: 1, y: 0 }}
-                        className="mt-4 rounded-full border-4 border-[#1A2F33] bg-[#69F0AE] px-5 py-2 font-fredoka text-lg font-black text-[#1A2F33]"
-                      >
-                        {fedSticker.emoji} MUNCH, MUNCH! Benny loved the {fedSticker.name}! 🎉
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={() => void startQuiz(0)}
+                    className="bg-white text-[#1A2F33] text-lg sm:text-xl font-fredoka font-black py-3 px-7 rounded-full border-[5px] border-[#1A2F33] shadow-[0_7px_0_#1A2F33]"
+                  >
+                    PLAY AGAIN
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onExit}
+                    className="bg-[#00B8D4] text-white text-lg sm:text-xl font-fredoka font-black py-3 px-7 rounded-full border-[5px] border-[#1A2F33] shadow-[0_7px_0_#1A2F33]"
+                  >
+                    LEVEL MAP
+                  </button>
                 </div>
-
-                <div className="relative mt-3 h-24 sm:h-28">
-                  <BearHost
-                    compact
-                    className="bottom-0"
-                    message={fedSticker ? `YUM! Thank you for my ${fedSticker.name}!` : "Oh wow! Which delicious sticker will you share with me?"}
-                  />
-                </div>
-
-                {fedSticker && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-                    <button
-                      type="button"
-                      onClick={() => void startQuiz(0)}
-                      className="bg-white text-[#1A2F33] text-lg sm:text-xl font-fredoka font-black py-3 px-7 rounded-full border-[5px] border-[#1A2F33] shadow-[0_7px_0_#1A2F33]"
-                    >
-                      PLAY AGAIN
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onExit}
-                      className="bg-[#00B8D4] text-white text-lg sm:text-xl font-fredoka font-black py-3 px-7 rounded-full border-[5px] border-[#1A2F33] shadow-[0_7px_0_#1A2F33]"
-                    >
-                      LEVEL MAP
-                    </button>
-                  </motion.div>
-                )}
               </motion.div>
             </motion.div>
           )}
@@ -499,12 +429,6 @@ export function PhonicsGame({ onExit, stickers }: { onExit: () => void; stickers
         </defs>
       </svg>
       <CartoonBackground />
-      <BearHost
-        compact
-        side="right"
-        className="bottom-1"
-        message={gameState === 'celebrating' ? "WOW! You built the whole word!" : "Tap each letter in order. I'm cheering for you!"}
-      />
 
       <div className="absolute left-3 right-3 top-3 z-40 flex items-center justify-between gap-3 sm:left-6 sm:right-6 sm:top-5">
         <button
