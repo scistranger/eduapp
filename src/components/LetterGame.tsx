@@ -330,6 +330,11 @@ export function LetterGame({
     setIntroReady(true);
   };
 
+  const replayIntroSound = () => {
+    initAudio();
+    void playPhoneme(introLetter);
+  };
+
   const replayQuizSound = async () => {
     if (quizLocked) return;
     setQuizLocked(true);
@@ -515,16 +520,25 @@ export function LetterGame({
 
             <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
               {!hasRepeated && !isCracked && (
-                <motion.button
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  type="button"
-                  onClick={confirmRepeatedSound}
-                  disabled={!introReady}
-                  className="rounded-full border-4 border-[#1A2F33] bg-[#FF9F68] px-6 py-3 font-fredoka text-lg font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33] disabled:opacity-50"
-                >
-                  🗣️ I SAID THE SOUND!
-                </motion.button>
+                <>
+                  <button
+                    type="button"
+                    onClick={replayIntroSound}
+                    className="rounded-full border-4 border-[#1A2F33] bg-[#00B8D4] px-5 py-3 font-fredoka text-lg font-black text-white shadow-[0_5px_0_#1A2F33]"
+                  >
+                    🔊 HEAR AGAIN
+                  </button>
+                  <motion.button
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    type="button"
+                    onClick={confirmRepeatedSound}
+                    disabled={!introReady}
+                    className="rounded-full border-4 border-[#1A2F33] bg-[#FF9F68] px-6 py-3 font-fredoka text-lg font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33] disabled:opacity-50"
+                  >
+                    🗣️ I SAID THE SOUND!
+                  </motion.button>
+                </>
               )}
             </div>
           </section>
