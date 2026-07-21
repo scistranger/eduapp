@@ -125,6 +125,41 @@ export const playRewardSound = async (): Promise<void> => {
   await new Promise((resolve) => setTimeout(resolve, 650));
 };
 
+export const playCrackRewardSound = async (): Promise<void> => {
+  if (typeof window === "undefined" || !("AudioContext" in window)) return;
+
+  rewardAudioContext ??= new AudioContext();
+  if (rewardAudioContext.state === "suspended") {
+    await rewardAudioContext.resume();
+  }
+
+  const context = rewardAudioContext;
+  const duration = 0.2;
+  const buffer = context.createBuffer(1, context.sampleRate * duration, context.sampleRate);
+  const data = buffer.getChannelData(0);
+
+  for (let index = 0; index < data.length; index += 1) {
+    const decay = 1 - index / data.length;
+    data[index] = (Math.random() * 2 - 1) * decay * decay;
+  }
+
+  const crack = context.createBufferSource();
+  const filter = context.createBiquadFilter();
+  const gain = context.createGain();
+  crack.buffer = buffer;
+  filter.type = "highpass";
+  filter.frequency.value = 1100;
+  gain.gain.setValueAtTime(0.32, context.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + duration);
+  crack.connect(filter);
+  filter.connect(gain);
+  gain.connect(context.destination);
+  crack.start();
+
+  await new Promise((resolve) => setTimeout(resolve, 120));
+  await playRewardSound();
+};
+
 export const playPhoneme = async (letter: string): Promise<void> => {
   try {
     const normalizedLetter = letter.toLowerCase();

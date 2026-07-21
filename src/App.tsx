@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { PhonicsGame } from "./components/PhonicsGame";
-import { LetterGame } from "./components/LetterGame";
+import { LetterGame, type FoodSticker } from "./components/LetterGame";
 import { initAudio, pickFreshLine, speakText } from "./utils/audio";
 
 import forestBg from "./assets/images/cartoon_forest_bg_1784540338051.jpg";
@@ -69,8 +69,16 @@ function Landing({ onStart }: { onStart: () => void }) {
 
 function LevelMap({
   onChoose,
+  levelOneComplete,
+  stars,
+  stickerCount,
+  autoLaunching,
 }: {
   onChoose: (level: "letters" | "vocabulary") => void;
+  levelOneComplete: boolean;
+  stars: number;
+  stickerCount: number;
+  autoLaunching: boolean;
 }) {
   const letters = ["b", "m", "r", "f", "h", "a", "t", "c"];
 
@@ -89,6 +97,11 @@ function LevelMap({
           <h1 className="font-fredoka text-3xl font-black text-[#1A2F33] sm:text-5xl">
             Forest Levels
           </h1>
+          {levelOneComplete && (
+            <p className="mt-2 font-fredoka text-base font-black text-[#16834B] sm:text-lg">
+              ⭐ {stars} stars · 🎟️ {stickerCount} stickers collected
+            </p>
+          )}
         </motion.header>
 
         <section className="relative grid w-full gap-10 pb-8 sm:grid-cols-2 sm:gap-16" aria-label="Phonics game levels">
@@ -131,12 +144,13 @@ function LevelMap({
 
           <motion.button
             type="button"
+            disabled={!levelOneComplete}
             initial={{ x: 40, y: 24, opacity: 0 }}
             animate={{ x: 0, y: 24, opacity: 1 }}
-            whileHover={{ y: 16, rotate: 1 }}
-            whileTap={{ y: 26, scale: 0.99 }}
+            whileHover={levelOneComplete ? { y: 16, rotate: 1 } : undefined}
+            whileTap={levelOneComplete ? { y: 26, scale: 0.99 } : undefined}
             onClick={() => onChoose("vocabulary")}
-            className="group relative overflow-hidden rounded-[2.5rem] border-[6px] border-[#1A2F33] bg-[#D9FFDA] p-4 text-left shadow-[0_12px_0_#1A2F33] sm:mt-12"
+            className={`group relative overflow-hidden rounded-[2.5rem] border-[6px] border-[#1A2F33] p-4 text-left shadow-[0_12px_0_#1A2F33] sm:mt-12 ${levelOneComplete ? "bg-[#D9FFDA]" : "cursor-not-allowed bg-[#D9E1E2] grayscale-[0.65]"}`}
           >
             <span className="absolute left-3 top-3 z-20 flex h-14 w-14 items-center justify-center rounded-full border-4 border-[#1A2F33] bg-[#69F0AE] font-fredoka text-3xl font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33]">
               2
@@ -161,9 +175,24 @@ function LevelMap({
               <h2 className="font-fredoka text-3xl font-black text-[#1A2F33]">-at Word Playground</h2>
               <p className="mt-2 font-andika text-lg font-bold text-[#38545A]">Build words, listen, then find the first sound.</p>
               <span className="mt-4 inline-flex rounded-full border-[3px] border-[#1A2F33] bg-[#23B867] px-5 py-2 font-fredoka text-lg font-black text-white transition-transform group-hover:translate-x-1">
-                PLAY LEVEL →
+                {levelOneComplete ? (autoLaunching ? "OPENING LEVEL 2…" : "PLAY LEVEL →") : "🔒 FINISH LEVEL 1"}
               </span>
             </div>
+            {!levelOneComplete && (
+              <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#D9E1E2]/35">
+                <span className="rounded-full border-[5px] border-[#1A2F33] bg-white px-6 py-4 font-fredoka text-2xl font-black text-[#1A2F33] shadow-[0_7px_0_#1A2F33]">
+                  🔒 LOCKED
+                </span>
+              </div>
+            )}
+            {autoLaunching && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0.45, 0.8, 0.45] }}
+                transition={{ repeat: Infinity, duration: 1.1 }}
+                className="pointer-events-none absolute inset-0 z-30 rounded-[2rem] border-[9px] border-[#69F0AE]"
+              />
+            )}
           </motion.button>
         </section>
       </div>
@@ -173,7 +202,16 @@ function LevelMap({
 
 export default function App() {
   const [screen, setScreen] = useState<AppScreen>("landing");
+  const [levelOneComplete, setLevelOneComplete] = useState(false);
+  const [levelOneStars, setLevelOneStars] = useState(0);
+  const [collectedStickers, setCollectedStickers] = useState<FoodSticker[]>([]);
+  const [autoLaunching, setAutoLaunching] = useState(false);
   const previousWelcome = useRef<string | null>(null);
+  const launchTimer = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (launchTimer.current !== null) window.clearTimeout(launchTimer.current);
+  }, []);
 
   const showLevels = () => {
     initAudio();
@@ -183,9 +221,41 @@ export default function App() {
     void speakText(line, 0.96, 1.18);
   };
 
+  const chooseLevel = (level: "letters" | "vocabulary") => {
+    if (level === "vocabulary" && !levelOneComplete) return;
+    if (launchTimer.current !== null) {
+      window.clearTimeout(launchTimer.current);
+      launchTimer.current = null;
+    }
+    setAutoLaunching(false);
+    setScreen(level);
+  };
+
+  const completeLevelOne = ({ stars, stickers }: { stars: number; stickers: FoodSticker[] }) => {
+    setLevelOneComplete(true);
+    setLevelOneStars(stars);
+    setCollectedStickers(stickers);
+    setScreen("levels");
+    setAutoLaunching(true);
+    void speakText("Level two is unlocked! The -at Word Playground is opening now.", 0.96, 1.2);
+    launchTimer.current = window.setTimeout(() => {
+      setAutoLaunching(false);
+      setScreen("vocabulary");
+      launchTimer.current = null;
+    }, 2600);
+  };
+
   if (screen === "landing") return <Landing onStart={showLevels} />;
-  if (screen === "letters") return <LetterGame onExit={showLevels} />;
+  if (screen === "letters") return <LetterGame onExit={showLevels} onComplete={completeLevelOne} />;
   if (screen === "vocabulary") return <PhonicsGame onExit={showLevels} />;
 
-  return <LevelMap onChoose={setScreen} />;
+  return (
+    <LevelMap
+      onChoose={chooseLevel}
+      levelOneComplete={levelOneComplete}
+      stars={levelOneStars}
+      stickerCount={collectedStickers.length}
+      autoLaunching={autoLaunching}
+    />
+  );
 }

@@ -197,7 +197,7 @@ export function PhonicsGame({ onExit }: { onExit: () => void }) {
       if (quizIndex === vocabs.length - 1) {
         setQuizFinished(true);
         await playRewardSound();
-        await speakText("You completed the playground! You are an -at word star.", 0.96, 1.2);
+        await speakText("You completed every phonics challenge! This forest medal is yours.", 0.96, 1.2);
         return;
       }
 
@@ -376,9 +376,16 @@ export function PhonicsGame({ onExit }: { onExit: () => void }) {
                 transition={{ type: 'spring', bounce: 0.6 }}
                 className="bg-[#FFEA00] border-[7px] border-[#1A2F33] rounded-[3rem] shadow-[0_14px_0_#1A2F33] p-8 sm:p-12 text-center max-w-xl"
               >
-                <div className="text-7xl sm:text-9xl mb-4">⭐</div>
-                <h2 className="text-4xl sm:text-6xl font-fredoka font-black text-[#1A2F33] mb-3">Quiz Complete!</h2>
-                <p className="text-xl sm:text-3xl font-fredoka font-bold text-[#1A2F33] mb-8">You are an -at word star!</p>
+                <motion.div
+                  initial={{ y: -80, rotate: -15, scale: 0 }}
+                  animate={{ y: 0, rotate: 0, scale: 1 }}
+                  transition={{ type: 'spring', bounce: 0.65 }}
+                  className="text-8xl sm:text-[9rem] mb-2"
+                >
+                  🏅
+                </motion.div>
+                <h2 className="text-4xl sm:text-6xl font-fredoka font-black text-[#1A2F33] mb-3">Phonics Medal!</h2>
+                <p className="text-xl sm:text-3xl font-fredoka font-bold text-[#1A2F33] mb-8">You completed the whole forest adventure!</p>
                 <div className="flex flex-col justify-center gap-3 sm:flex-row">
                   <button
                     type="button"
