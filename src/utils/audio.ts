@@ -4,13 +4,25 @@ const phoneticMap: Record<string, string> = {
   a: "ah",
   t: "tuh",
   b: "buh",
+  f: "fff",
   h: "huh",
+  m: "mmm",
+  r: "rrr",
 };
+
+let rewardAudioContext: AudioContext | null = null;
 
 export const initAudio = () => {
   if (typeof window !== "undefined" && "speechSynthesis" in window) {
     // Pre-load voices to ensure they are available immediately without delay
     window.speechSynthesis.getVoices();
+  }
+
+  if (typeof window !== "undefined" && "AudioContext" in window) {
+    rewardAudioContext ??= new AudioContext();
+    if (rewardAudioContext.state === "suspended") {
+      void rewardAudioContext.resume();
+    }
   }
 };
 
@@ -74,6 +86,43 @@ export const speakText = async (
 
 export const getPhonemeSound = (letter: string) => {
   return phoneticMap[letter.toLowerCase()] || letter;
+};
+
+export const pickFreshLine = (lines: string[], previous?: string | null) => {
+  const freshLines = lines.filter((line) => line !== previous);
+  const choices = freshLines.length > 0 ? freshLines : lines;
+  return choices[Math.floor(Math.random() * choices.length)];
+};
+
+export const playRewardSound = async (): Promise<void> => {
+  if (typeof window === "undefined" || !("AudioContext" in window)) return;
+
+  rewardAudioContext ??= new AudioContext();
+  if (rewardAudioContext.state === "suspended") {
+    await rewardAudioContext.resume();
+  }
+
+  const context = rewardAudioContext;
+  const start = context.currentTime;
+  const notes = [523.25, 659.25, 783.99, 1046.5];
+
+  notes.forEach((frequency, index) => {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const noteStart = start + index * 0.11;
+
+    oscillator.type = index === notes.length - 1 ? "triangle" : "sine";
+    oscillator.frequency.setValueAtTime(frequency, noteStart);
+    gain.gain.setValueAtTime(0.0001, noteStart);
+    gain.gain.exponentialRampToValueAtTime(0.2, noteStart + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.0001, noteStart + 0.28);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(noteStart);
+    oscillator.stop(noteStart + 0.3);
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 650));
 };
 
 export const playPhoneme = async (letter: string): Promise<void> => {

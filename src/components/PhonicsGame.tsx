@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { vocabs } from '../data';
-import { speakText, getPhonemeSound, initAudio, prefetchAudio, playPhoneme } from '../utils/audio';
+import { initAudio, pickFreshLine, playPhoneme, playRewardSound, speakText } from '../utils/audio';
 
 import forestBg from '../assets/images/cartoon_forest_bg_1784540338051.jpg';
 import dogImg from '../assets/images/dog_closeup_holding_card_solid_1784547773486.jpg';
@@ -15,32 +15,81 @@ function CartoonBackground() {
 }
 
 type MonkeyData = { id: number; letter: string; bushIndex: number; revealed: boolean; used: boolean };
-type GameState = 'landing' | 'intro' | 'playing' | 'assembled' | 'celebrating' | 'quiz';
+type GameState = 'intro' | 'playing' | 'assembled' | 'celebrating' | 'quiz';
 type QuizFeedback = 'correct' | 'incorrect' | null;
 
 const quizLetters = ['b', 'f', 'h', 'c', 'r', 'm'];
 
-export function PhonicsGame() {
+const gameWelcomeLines = [
+  "Great choice! Let's build some -at words together.",
+  "Welcome to the -at Word Playground. Ready to make words with me?",
+  "Let's follow the sounds and discover some -at words.",
+];
+
+const wordPromptLines = [
+  (word: string) => `Let's make ${word}. Find each sound with me.`,
+  (word: string) => `Our next word is ${word}. Let's build it from the beginning.`,
+  (word: string) => `Ready for ${word}? Listen, then collect its letters.`,
+  (word: string) => `I found a new word for us: ${word}. Let's sound it out.`,
+];
+
+const wordPraiseLines = [
+  "You built it! That was wonderful listening.",
+  "Nicely done! Every sound landed in the right place.",
+  "Great teamwork! You made the whole word.",
+  "Fantastic! Your phonics ears are getting stronger.",
+  "That was smooth! Let's discover another word.",
+];
+
+const vocabQuizPrompts = [
+  (word: string) => `Listen to ${word}. Which letter makes its first sound?`,
+  (word: string) => `Here's ${word}. Can you find the sound at the beginning?`,
+  (word: string) => `The word is ${word}. Which letter should come first?`,
+  (word: string) => `Say ${word} in your head. What letter starts it?`,
+];
+
+const quizPraiseLines = [
+  (word: string) => `Yes! ${word} starts with that sound.`,
+  (word: string) => `Exactly right. You found the first sound in ${word}.`,
+  (word: string) => `You got it! That's how ${word} begins.`,
+  (word: string) => `Brilliant listening. That letter starts ${word}.`,
+];
+
+const quizTryAgainLines = [
+  (word: string) => `Good try. Listen to ${word} once more.`,
+  (word: string) => `Almost! Let's slow down and hear ${word} again.`,
+  (word: string) => `Not that one yet. The word is ${word}. Try its first sound again.`,
+  (word: string) => `Your ears get another chance. Listen: ${word}.`,
+];
+
+export function PhonicsGame({ onExit }: { onExit: () => void }) {
   const [vocabIndex, setVocabIndex] = useState(0);
   const [bushes, setBushes] = useState<MonkeyData[]>([]);
   const [assembled, setAssembled] = useState<string[]>([]);
-  const [gameState, setGameState] = useState<GameState>('landing');
+  const [gameState, setGameState] = useState<GameState>('intro');
   const [quizIndex, setQuizIndex] = useState(0);
   const [selectedQuizLetter, setSelectedQuizLetter] = useState<string | null>(null);
   const [quizFeedback, setQuizFeedback] = useState<QuizFeedback>(null);
   const [quizLocked, setQuizLocked] = useState(false);
   const [quizFinished, setQuizFinished] = useState(false);
+  const previousWordPrompt = useRef<string | null>(null);
+  const previousWordPraise = useRef<string | null>(null);
+  const previousQuizPrompt = useRef<string | null>(null);
+  const previousQuizPraise = useRef<string | null>(null);
+  const previousTryAgain = useRef<string | null>(null);
 
-  const startQuiz = (index: number) => {
+  const startQuiz = async (index: number) => {
     const word = vocabs[index].word;
     setQuizIndex(index);
     setSelectedQuizLetter(null);
     setQuizFeedback(null);
-    setQuizLocked(false);
+    setQuizLocked(true);
     setQuizFinished(false);
     setGameState('quiz');
-    prefetchAudio(`Listen carefully. ${word}. Which letter makes the first sound?`);
-    speakText(`Listen carefully. ${word}. Which letter makes the first sound?`, 0.9, 1.2);
+    const line = pickFreshLine(vocabQuizPrompts.map((prompt) => prompt(word)), previousQuizPrompt.current);
+    previousQuizPrompt.current = line;
+    await speakText(line, 0.92, 1.16);
+    setQuizLocked(false);
   };
 
   const startVocab = async (index: number) => {
@@ -49,15 +98,6 @@ export function PhonicsGame() {
     const letters = word.split('');
     const bushPositions = [0, 1, 2].sort(() => Math.random() - 0.5);
     
-    // Prefetch audio in parallel
-    prefetchAudio(`Let's spell... ${word}!`);
-    // letters.forEach(l => prefetchAudio(getPhonemeSound(l))); // No-op for Drive URLs for now
-    prefetchAudio(word);
-    prefetchAudio("Great job! Let's try the next one!");
-    prefetchAudio("Awesome work! You are doing great!");
-    prefetchAudio("Perfect! Let's keep going!");
-    prefetchAudio("You are a star! Next word!");
-
     const newBushes = letters.map((l, i) => ({
       id: i,
       letter: l,
@@ -68,22 +108,17 @@ export function PhonicsGame() {
     setBushes(newBushes);
     
     setGameState('playing');
-    speakText(`Let's spell... ${word}!`);
+    const line = pickFreshLine(wordPromptLines.map((prompt) => prompt(word)), previousWordPrompt.current);
+    previousWordPrompt.current = line;
+    void speakText(line, 0.96, 1.18);
   };
 
   const handleStartGame = async () => {
     initAudio();
     setGameState('intro');
     setVocabIndex(0);
-    const word = vocabs[0].word;
-    const letters = word.split('');
-    prefetchAudio("Welcome to the Phonics Forest! Let's learn some words together!");
-    prefetchAudio(`Let's spell... ${word}!`);
-    letters.forEach(l => prefetchAudio(getPhonemeSound(l)));
-    prefetchAudio(word);
-
-    await speakText("Welcome to the Phonics Forest! Let's learn some words together!", 1.0, 1.3);
-    startVocab(0);
+    await speakText(pickFreshLine(gameWelcomeLines), 0.96, 1.18);
+    await startVocab(0);
   };
 
   const handleWordComplete = async () => {
@@ -97,27 +132,22 @@ export function PhonicsGame() {
        await new Promise(r => setTimeout(r, 200));
     }
     await speakText(word, 1.0, 1.2);
-    
+    await playRewardSound();
     setGameState('celebrating');
-    
-    const encouragements = [
-      "Great job! Let's try the next one!",
-      "Awesome work! You are doing great!",
-      "Perfect! Let's keep going!",
-      "You are a star! Next word!"
-    ];
-    const enc = encouragements[Math.floor(Math.random() * encouragements.length)];
-    await speakText(enc, 1.0, 1.4);
+
+    const praise = pickFreshLine(wordPraiseLines, previousWordPraise.current);
+    previousWordPraise.current = praise;
+    await speakText(praise, 0.98, 1.2);
     
     if (vocabIndex === vocabs.length - 1) {
       await speakText("Now it's quiz time! Listen and find the first sound.", 1.0, 1.3);
-      startQuiz(0);
+      await startQuiz(0);
       return;
     }
 
     const nextIndex = vocabIndex + 1;
     setVocabIndex(nextIndex);
-    startVocab(nextIndex);
+    await startVocab(nextIndex);
   };
 
   const handleLetterClick = async (monkeyData: MonkeyData) => {
@@ -158,56 +188,56 @@ export function PhonicsGame() {
 
     if (letter === correctLetter) {
       setQuizFeedback('correct');
-      await speakText(`${word}. That's right!`, 1.0, 1.3);
+      await playRewardSound();
+      const line = pickFreshLine(quizPraiseLines.map((prompt) => prompt(word)), previousQuizPraise.current);
+      previousQuizPraise.current = line;
+      await speakText(line, 0.98, 1.2);
       await new Promise(r => setTimeout(r, 500));
 
       if (quizIndex === vocabs.length - 1) {
         setQuizFinished(true);
-        await speakText("Quiz complete! You are an at word star!", 1.0, 1.3);
+        await playRewardSound();
+        await speakText("You completed the playground! You are an -at word star.", 0.96, 1.2);
         return;
       }
 
-      startQuiz(quizIndex + 1);
+      await startQuiz(quizIndex + 1);
       return;
     }
 
     setQuizFeedback('incorrect');
-    await speakText(`Try again. Listen carefully. ${word}.`, 0.9, 1.2);
+    const line = pickFreshLine(quizTryAgainLines.map((prompt) => prompt(word)), previousTryAgain.current);
+    previousTryAgain.current = line;
+    await speakText(line, 0.92, 1.14);
     setSelectedQuizLetter(null);
     setQuizFeedback(null);
     setQuizLocked(false);
   };
 
-  if (gameState === 'landing') {
+  useEffect(() => {
+    void handleStartGame();
+  }, []);
+
+  if (gameState === 'intro') {
     return (
       <div className="flex h-screen w-full font-body overflow-hidden relative bg-[#F8F9FA]">
         <CartoonBackground />
-        
-        <div className="flex flex-col items-center justify-center h-full w-full relative z-20">
-          <motion.div 
-            initial={{ y: 50, opacity: 0 }}
+        <button
+          type="button"
+          onClick={onExit}
+          className="absolute left-4 top-4 z-30 rounded-full border-4 border-[#1A2F33] bg-white px-4 py-2 font-fredoka text-lg font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33]"
+        >
+          ← LEVELS
+        </button>
+        <div className="relative z-20 flex h-full w-full flex-col items-center justify-center px-4">
+          <motion.div
+            initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="flex flex-col items-center text-center max-w-3xl mx-4"
+            className="max-w-xl rounded-[3rem] border-[6px] border-[#1A2F33] bg-white/95 p-8 text-center shadow-[0_12px_0_#1A2F33]"
           >
-            <h1 
-              className="text-6xl sm:text-[80px] font-display font-bold text-white mb-10 tracking-widest drop-shadow-[0_10px_15px_rgba(0,0,0,0.5)] z-10 w-full max-w-4xl text-center"
-              style={{ 
-                WebkitTextStroke: '6px #1A2F33',
-                paintOrder: 'stroke fill',
-                textShadow: '0 6px 0 #1A2F33, 0 10px 15px rgba(0,0,0,0.5)'
-              }}
-            >
-              Phonics Forest
-            </h1>
-            
-            <div className="flex flex-col gap-4">
-              <button 
-                onClick={handleStartGame}
-                className="bg-[#00B8D4] text-white text-3xl sm:text-5xl font-fredoka font-black py-6 px-16 rounded-[3rem] shadow-[0_12px_0_#1A2F33] hover:translate-y-2 hover:shadow-[0_4px_0_#1A2F33] active:translate-y-4 active:shadow-none transition-all tracking-wide border-[6px] border-[#1A2F33] h-[100px] flex items-center justify-center"
-              >
-                PLAY
-              </button>
-            </div>
+            <div className="mb-4 text-7xl">🌿</div>
+            <h1 className="font-fredoka text-4xl font-black text-[#1A2F33] sm:text-6xl">-at Word Playground</h1>
+            <p className="mt-3 font-andika text-xl font-bold text-[#38545A] sm:text-2xl">Your forest guide is getting the first word ready…</p>
           </motion.div>
         </div>
       </div>
@@ -221,8 +251,21 @@ export function PhonicsGame() {
       <div className="flex h-screen w-full font-body overflow-hidden relative bg-[#F8F9FA]">
         <CartoonBackground />
 
+        <div className="absolute left-3 right-3 top-3 z-30 flex items-center justify-between gap-3 sm:left-6 sm:right-6 sm:top-5">
+          <button
+            type="button"
+            onClick={onExit}
+            className="rounded-full border-4 border-[#1A2F33] bg-white px-3 py-2 font-fredoka text-sm font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33] sm:px-5 sm:text-lg"
+          >
+            ← LEVELS
+          </button>
+          <div className="rounded-full border-4 border-[#1A2F33] bg-[#69F0AE] px-3 py-2 text-center font-fredoka text-sm font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33] sm:px-6 sm:text-lg">
+            LEVEL 2 · FIRST SOUND QUIZ
+          </div>
+        </div>
+
         <div className="flex flex-col h-full w-full relative z-10">
-          <div className="h-[54%] flex flex-row items-center justify-center gap-6 sm:gap-12 px-4 w-full max-w-6xl mx-auto">
+          <div className="h-[56%] flex flex-row items-center justify-center gap-6 sm:gap-12 px-4 pt-16 w-full max-w-6xl mx-auto">
             <div className="flex flex-col items-center gap-4 shrink-0">
               <motion.div
                 key={quizVocab.image}
@@ -336,13 +379,22 @@ export function PhonicsGame() {
                 <div className="text-7xl sm:text-9xl mb-4">⭐</div>
                 <h2 className="text-4xl sm:text-6xl font-fredoka font-black text-[#1A2F33] mb-3">Quiz Complete!</h2>
                 <p className="text-xl sm:text-3xl font-fredoka font-bold text-[#1A2F33] mb-8">You are an -at word star!</p>
-                <button
-                  type="button"
-                  onClick={() => startQuiz(0)}
-                  className="bg-[#00B8D4] text-white text-xl sm:text-3xl font-fredoka font-black py-4 px-8 rounded-full border-[5px] border-[#1A2F33] shadow-[0_8px_0_#1A2F33] hover:translate-y-1 hover:shadow-[0_3px_0_#1A2F33] active:translate-y-2 active:shadow-none transition-all"
-                >
-                  PLAY QUIZ AGAIN
-                </button>
+                <div className="flex flex-col justify-center gap-3 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={() => void startQuiz(0)}
+                    className="bg-white text-[#1A2F33] text-xl sm:text-2xl font-fredoka font-black py-4 px-7 rounded-full border-[5px] border-[#1A2F33] shadow-[0_8px_0_#1A2F33] hover:translate-y-1 hover:shadow-[0_3px_0_#1A2F33] active:translate-y-2 active:shadow-none transition-all"
+                  >
+                    PLAY AGAIN
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onExit}
+                    className="bg-[#00B8D4] text-white text-xl sm:text-2xl font-fredoka font-black py-4 px-7 rounded-full border-[5px] border-[#1A2F33] shadow-[0_8px_0_#1A2F33] hover:translate-y-1 hover:shadow-[0_3px_0_#1A2F33] active:translate-y-2 active:shadow-none transition-all"
+                  >
+                    LEVEL MAP
+                  </button>
+                </div>
               </motion.div>
             </motion.div>
           )}
@@ -369,12 +421,25 @@ export function PhonicsGame() {
         </defs>
       </svg>
       <CartoonBackground />
+
+      <div className="absolute left-3 right-3 top-3 z-40 flex items-center justify-between gap-3 sm:left-6 sm:right-6 sm:top-5">
+        <button
+          type="button"
+          onClick={onExit}
+          className="rounded-full border-4 border-[#1A2F33] bg-white px-3 py-2 font-fredoka text-sm font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33] sm:px-5 sm:text-lg"
+        >
+          ← LEVELS
+        </button>
+        <div className="rounded-full border-4 border-[#1A2F33] bg-[#69F0AE] px-3 py-2 text-center font-fredoka text-sm font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33] sm:px-6 sm:text-lg">
+          LEVEL 2 · WORD {vocabIndex + 1}/{vocabs.length}
+        </div>
+      </div>
       
       {/* Game Area */}
       <div className="flex flex-col h-full w-full relative z-10">
         
         {/* Upper Panel */}
-        <div className="h-1/2 flex flex-row items-center justify-center gap-8 sm:gap-16 relative z-10 px-4 w-full max-w-6xl mx-auto">
+        <div className="h-1/2 flex flex-row items-center justify-center gap-8 sm:gap-16 relative z-10 px-4 pt-14 w-full max-w-6xl mx-auto">
           <motion.div 
             key={vocab.image}
             initial={{ scale: 0, rotate: -5 }}
