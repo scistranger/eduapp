@@ -45,10 +45,10 @@ const stickerLines = [
 ];
 
 const repeatPrompts = [
-  "Your turn! Say that sound out loud, then tap the orange button. I can't wait to hear you!",
-  "Now you try! Repeat the sound with your best phonics voice, then tell me you said it!",
-  "Let's hear your amazing voice! Say the sound out loud, then tap “I said the sound!”",
-  "I'm listening! Repeat that sound proudly, then tap the orange button!",
+  "Your turn! Say the sound, then tap the orange button.",
+  "Say the sound, then tap the orange button.",
+  "Now repeat the sound and tap orange.",
+  "Your turn—say it, then tap orange!",
 ];
 
 const quizPrompts = [
@@ -330,11 +330,6 @@ export function LetterGame({
     setIntroReady(true);
   };
 
-  const replayIntroSound = () => {
-    initAudio();
-    void playPhoneme(introLetter);
-  };
-
   const replayQuizSound = async () => {
     if (quizLocked) return;
     setQuizLocked(true);
@@ -450,7 +445,7 @@ export function LetterGame({
                 ? "Sticker collected—amazing!"
                 : hasRepeated
                   ? "Great speaking! Now tap the card to crack it!"
-                  : "1. Listen  2. Repeat the sound out loud  3. Crack the card"}
+                  : "Listen. Say the sound. Tap orange."}
             </p>
 
             <motion.button
@@ -519,13 +514,6 @@ export function LetterGame({
             </motion.button>
 
             <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={replayIntroSound}
-                className="rounded-full border-4 border-[#1A2F33] bg-[#00B8D4] px-5 py-3 font-fredoka text-lg font-black text-white shadow-[0_5px_0_#1A2F33]"
-              >
-                🔊 HEAR AGAIN
-              </button>
               {!hasRepeated && !isCracked && (
                 <motion.button
                   initial={{ scale: 0 }}
