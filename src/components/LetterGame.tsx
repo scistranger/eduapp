@@ -75,7 +75,7 @@ const tryAgainLines = [
   "Let's try that sound again. You can do it.",
 ];
 
-type Phase = "intro" | "quiz" | "complete";
+type Phase = "intro" | "favorite" | "quiz" | "puzzle" | "complete";
 
 const shuffle = <T,>(items: T[]) => {
   const copy = [...items];
@@ -101,7 +101,17 @@ function Background() {
   );
 }
 
-function CollectionRail({ stickers, stars }: { stickers: FoodSticker[]; stars: number }) {
+function CollectionRail({
+  stickers,
+  stars,
+  favorite,
+  earnedPieces,
+}: {
+  stickers: FoodSticker[];
+  stars: number;
+  favorite: FoodSticker | null;
+  earnedPieces: number[];
+}) {
   return (
     <aside className="flex min-h-0 flex-col rounded-[2rem] border-[5px] border-[#1A2F33] bg-white/95 p-3 shadow-[0_8px_0_#1A2F33] sm:h-full sm:p-4" aria-label="Reward collection">
       <div className="mb-3 flex items-center justify-between gap-2 border-b-4 border-dashed border-[#AAC1C4] pb-3 sm:block sm:text-center">
@@ -113,6 +123,30 @@ function CollectionRail({ stickers, stars }: { stickers: FoodSticker[]; stars: n
           ⭐ {stars}
         </div>
       </div>
+
+      {favorite && (
+        <div className={`mb-3 rounded-2xl border-[3px] border-[#1A2F33] p-2 text-center shadow-[0_3px_0_#1A2F33] ${favorite.color}`}>
+          <p className="font-fredoka text-[10px] font-bold uppercase tracking-widest text-[#38545A]">Favorite puzzle</p>
+          <div className="mt-1 flex items-center justify-center gap-2">
+            <span className="text-4xl">{favorite.emoji}</span>
+            <div className="text-left">
+              <p className="font-fredoka text-sm font-black text-[#1A2F33]">{favorite.name}</p>
+              <p className="font-fredoka text-xs font-bold text-[#38545A]">🧩 {earnedPieces.length}/8 pieces</p>
+            </div>
+          </div>
+          <div className="mt-2 grid grid-cols-4 gap-1">
+            {Array.from({ length: 8 }, (_, index) => (
+              <motion.span
+                key={index}
+                animate={earnedPieces.includes(index) ? { scale: [0.7, 1.15, 1], rotate: [0, -8, 0] } : {}}
+                className={`flex aspect-square items-center justify-center rounded-md border-2 border-[#1A2F33] text-sm ${earnedPieces.includes(index) ? "bg-[#69F0AE]" : "bg-white/70 text-[#8DA0A5]"}`}
+              >
+                {earnedPieces.includes(index) ? "🧩" : "?"}
+              </motion.span>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid min-h-0 flex-1 grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-2 sm:content-start">
         {Array.from({ length: learningLetters.length }, (_, index) => {
@@ -139,6 +173,32 @@ function CollectionRail({ stickers, stars }: { stickers: FoodSticker[]; stars: n
   );
 }
 
+function PuzzleSlice({ sticker, pieceIndex }: { sticker: FoodSticker; pieceIndex: number }) {
+  const column = pieceIndex % 4;
+  const row = Math.floor(pieceIndex / 4);
+
+  return (
+    <div className={`absolute inset-0 overflow-hidden rounded-xl ${sticker.color}`}>
+      <span
+        className="absolute flex items-center justify-center leading-none"
+        style={{
+          width: "400%",
+          height: "200%",
+          left: `-${column * 100}%`,
+          top: `-${row * 100}%`,
+          fontSize: "clamp(10rem, 27vw, 18rem)",
+        }}
+        aria-hidden="true"
+      >
+        {sticker.emoji}
+      </span>
+      <span className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#1A2F33] bg-white/90 font-fredoka text-[10px] font-black text-[#1A2F33]">
+        {pieceIndex + 1}
+      </span>
+    </div>
+  );
+}
+
 export function LetterGame({
   onExit,
   onComplete,
@@ -154,7 +214,14 @@ export function LetterGame({
   const [stickerDeck] = useState(() => shuffle(foodStickers));
   const [stickers, setStickers] = useState<FoodSticker[]>([]);
   const [newSticker, setNewSticker] = useState<FoodSticker | null>(null);
+  const [favoriteSticker, setFavoriteSticker] = useState<FoodSticker | null>(null);
+  const [favoriteLocked, setFavoriteLocked] = useState(false);
   const [stars, setStars] = useState(0);
+  const [earnedPieces, setEarnedPieces] = useState<number[]>([]);
+  const [pieceOrder] = useState(() => shuffle(Array.from({ length: 8 }, (_, index) => index)));
+  const [placedPieces, setPlacedPieces] = useState<number[]>([]);
+  const [activePiece, setActivePiece] = useState<number | null>(null);
+  const [puzzleLocked, setPuzzleLocked] = useState(false);
   const [quizOrder] = useState(() => shuffle(learningLetters));
   const [quizIndex, setQuizIndex] = useState(0);
   const [quizLocked, setQuizLocked] = useState(true);
@@ -163,6 +230,7 @@ export function LetterGame({
   const previousPrompt = useRef<string | null>(null);
   const previousPraise = useRef<string | null>(null);
   const previousTryAgain = useRef<string | null>(null);
+  const slotRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const introLetter = learningLetters[introIndex];
   const quizTarget = quizOrder[quizIndex];
@@ -232,8 +300,19 @@ export function LetterGame({
       return;
     }
 
-    await speakText("Your sticker bar is full! Now every correct sound match earns a star.", 0.96, 1.18);
+    await speakText("WOW! You collected all eight stickers! Now choose your favorite one. It will become your special quiz puzzle!", 0.98, 1.22);
+    setPhase("favorite");
+  };
+
+  const chooseFavoriteSticker = async (sticker: FoodSticker) => {
+    if (favoriteLocked) return;
+    setFavoriteLocked(true);
+    setFavoriteSticker(sticker);
+    await playRewardSound();
+    const spokenName = sticker.id === "pineapple-bun" ? "pineapple bun" : sticker.name;
+    await speakText(`Excellent choice! Your ${spokenName} sticker is now an eight-piece puzzle. Earn one piece for every correct sound!`, 0.98, 1.22);
     setPhase("quiz");
+    setFavoriteLocked(false);
   };
 
   const confirmRepeatedSound = async () => {
@@ -264,19 +343,19 @@ export function LetterGame({
 
     if (letter === quizTarget) {
       const nextStars = stars + 1;
+      const nextPieces = [...earnedPieces, quizIndex];
       setStars(nextStars);
+      setEarnedPieces(nextPieces);
       setFeedback("correct");
       await playRewardSound();
       const line = pickFreshLine(correctLines, previousPraise.current);
       previousPraise.current = line;
-      await speakText(line, 0.98, 1.22);
+      await speakText(`${line} You also earned piece ${quizIndex + 1} of your ${favoriteSticker?.name || "favorite sticker"} puzzle!`, 0.98, 1.22);
 
       if (quizIndex === quizOrder.length - 1) {
-        setPhase("complete");
         await playRewardSound();
-        await speakText(`Level one complete! You collected ${nextStars} stars. Let's return to the map and open level two.`, 0.96, 1.2);
-        await new Promise((resolve) => setTimeout(resolve, 1200));
-        onComplete({ stars: nextStars, stickers });
+        await speakText("You earned all eight puzzle pieces! Now drag each piece into the empty frame to rebuild your favorite sticker!", 0.96, 1.2);
+        setPhase("puzzle");
         return;
       }
 
@@ -294,6 +373,42 @@ export function LetterGame({
     setQuizLocked(false);
   };
 
+  const placePuzzlePiece = async (pieceIndex: number) => {
+    if (puzzleLocked || placedPieces.includes(pieceIndex)) return;
+    setPuzzleLocked(true);
+    const nextPlaced = [...placedPieces, pieceIndex];
+    setPlacedPieces(nextPlaced);
+    setActivePiece(null);
+    await playRewardSound();
+
+    if (nextPlaced.length === 8) {
+      setPhase("complete");
+      await speakText(`You completed the ${favoriteSticker?.name || "sticker"} puzzle! Level one is complete, and level two is ready for you!`, 0.98, 1.22);
+      await new Promise((resolve) => setTimeout(resolve, 1400));
+      onComplete({ stars, stickers });
+      return;
+    }
+
+    await speakText(`Perfect fit! ${8 - nextPlaced.length} puzzle pieces to go.`, 1.0, 1.2);
+    setPuzzleLocked(false);
+  };
+
+  const handlePieceDrop = (pieceIndex: number, x: number, y: number) => {
+    const targetIndex = slotRefs.current.findIndex((slot) => {
+      if (!slot) return false;
+      const rect = slot.getBoundingClientRect();
+      return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+    });
+
+    if (targetIndex === pieceIndex) {
+      void placePuzzlePiece(pieceIndex);
+    }
+  };
+
+  const handleSlotTap = (slotIndex: number) => {
+    if (activePiece === slotIndex) void placePuzzlePiece(slotIndex);
+  };
+
   return (
     <main className="relative flex h-screen min-h-[680px] w-full flex-col overflow-hidden px-3 py-3 font-body sm:px-6 sm:py-5">
       <Background />
@@ -307,7 +422,7 @@ export function LetterGame({
           ← LEVELS
         </button>
         <div className="rounded-full border-4 border-[#1A2F33] bg-[#FFEA00] px-4 py-2 text-center font-fredoka text-base font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33] sm:px-7 sm:text-xl">
-          LEVEL 1 · LETTER SOUND TRAIL
+          LEVEL 1 · {phase === "intro" ? "LETTER SOUND TRAIL" : phase === "favorite" ? "CHOOSE A FAVORITE" : phase === "quiz" ? "PUZZLE PIECE QUIZ" : phase === "puzzle" ? "BUILD YOUR PUZZLE" : "COMPLETE"}
         </div>
       </header>
 
@@ -420,11 +535,41 @@ export function LetterGame({
           </section>
         )}
 
+        {phase === "favorite" && (
+          <section className="flex min-h-0 flex-col items-center justify-center overflow-hidden rounded-[2.5rem] border-[5px] border-[#1A2F33] bg-white/90 p-4 shadow-[0_8px_0_#1A2F33] sm:p-6">
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="mb-2 text-6xl">💖</motion.div>
+            <h1 className="text-center font-fredoka text-3xl font-black text-[#1A2F33] sm:text-4xl">Which sticker is your favorite?</h1>
+            <p className="mb-5 mt-2 text-center font-andika text-base font-bold text-[#38545A] sm:text-xl">Tap one sticker. It will become the puzzle you earn during the quiz!</p>
+            <div className="grid w-full max-w-3xl grid-cols-4 gap-3 sm:gap-4">
+              {stickers.map((sticker) => (
+                <motion.button
+                  key={sticker.id}
+                  type="button"
+                  onClick={() => void chooseFavoriteSticker(sticker)}
+                  disabled={favoriteLocked}
+                  whileHover={favoriteLocked ? undefined : { y: -7, rotate: -2 }}
+                  whileTap={favoriteLocked ? undefined : { scale: 0.94 }}
+                  className={`flex min-h-28 touch-manipulation flex-col items-center justify-center rounded-[1.8rem] border-[5px] border-[#1A2F33] p-2 shadow-[0_7px_0_#1A2F33] sm:min-h-36 ${sticker.color} ${favoriteSticker?.id === sticker.id ? "ring-8 ring-[#69F0AE]" : ""}`}
+                  aria-label={`Choose ${sticker.name} as favorite`}
+                >
+                  <span className="text-5xl sm:text-7xl">{sticker.emoji}</span>
+                  <span className="mt-2 max-w-full truncate font-fredoka text-xs font-black text-[#1A2F33] sm:text-base">{sticker.name}</span>
+                </motion.button>
+              ))}
+            </div>
+          </section>
+        )}
+
         {phase === "quiz" && (
           <section className="relative flex min-h-0 flex-col items-center justify-center overflow-hidden rounded-[2.5rem] border-[5px] border-[#1A2F33] bg-white/80 p-3 shadow-[0_8px_0_#1A2F33] sm:p-5">
             <div className="mb-4 rounded-[2rem] border-4 border-[#1A2F33] bg-white px-5 py-3 text-center shadow-[0_5px_0_#1A2F33]">
               <p className="font-fredoka text-sm font-bold uppercase tracking-[0.16em] text-[#008FA6]">Star Challenge {quizIndex + 1}/{quizOrder.length}</p>
               <h1 className="font-fredoka text-2xl font-black text-[#1A2F33] sm:text-3xl">Which letter did you hear?</h1>
+              {favoriteSticker && (
+                <p className="mt-1 font-fredoka text-sm font-black text-[#16834B] sm:text-base">
+                  {favoriteSticker.emoji} Puzzle pieces: {earnedPieces.length}/8
+                </p>
+              )}
               <button
                 type="button"
                 onClick={replayQuizSound}
@@ -460,18 +605,88 @@ export function LetterGame({
                 );
               })}
             </div>
+            <AnimatePresence>
+              {feedback === "correct" && favoriteSticker && (
+                <motion.div
+                  initial={{ scale: 0, y: 30, rotate: -15 }}
+                  animate={{ scale: 1, y: 0, rotate: 0 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  className={`absolute right-4 top-4 flex h-24 w-24 flex-col items-center justify-center rounded-2xl border-[4px] border-[#1A2F33] text-4xl shadow-[0_6px_0_#1A2F33] sm:right-8 sm:top-8 ${favoriteSticker.color}`}
+                >
+                  🧩
+                  <span className="font-fredoka text-xs font-black text-[#1A2F33]">Piece {quizIndex + 1}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </section>
+        )}
+
+        {phase === "puzzle" && favoriteSticker && (
+          <section className="flex min-h-0 flex-col items-center justify-center overflow-hidden rounded-[2.5rem] border-[5px] border-[#1A2F33] bg-white/90 p-3 shadow-[0_8px_0_#1A2F33] sm:p-5">
+            <div className="mb-3 text-center">
+              <h1 className="font-fredoka text-2xl font-black text-[#1A2F33] sm:text-4xl">Build Your {favoriteSticker.name} Puzzle!</h1>
+              <p className="mt-1 font-andika text-sm font-bold text-[#38545A] sm:text-lg">Drag each piece into its matching space. You can also tap a piece, then tap its space.</p>
+            </div>
+
+            <div className="w-full max-w-2xl rounded-[2rem] border-[7px] border-[#1A2F33] bg-[#DDEBED] p-2 shadow-[0_10px_0_#1A2F33] sm:p-3">
+              <div className="grid grid-cols-4 gap-1.5 sm:gap-2" aria-label="Empty puzzle frame">
+                {Array.from({ length: 8 }, (_, pieceIndex) => {
+                  const isPlaced = placedPieces.includes(pieceIndex);
+                  const isTargeted = activePiece === pieceIndex;
+                  return (
+                    <button
+                      key={pieceIndex}
+                      ref={(element) => { slotRefs.current[pieceIndex] = element; }}
+                      type="button"
+                      onClick={() => handleSlotTap(pieceIndex)}
+                      className={`relative aspect-square overflow-hidden rounded-xl border-[3px] border-[#1A2F33] ${isPlaced ? "bg-white" : isTargeted ? "bg-[#FFF3A5] ring-4 ring-[#FF9F68]" : "border-dashed bg-white/70"}`}
+                      aria-label={isPlaced ? `Puzzle space ${pieceIndex + 1}, filled` : `Puzzle space ${pieceIndex + 1}, empty`}
+                    >
+                      {isPlaced ? (
+                        <motion.div initial={{ scale: 0.65 }} animate={{ scale: 1 }} className="absolute inset-0">
+                          <PuzzleSlice sticker={favoriteSticker} pieceIndex={pieceIndex} />
+                        </motion.div>
+                      ) : (
+                        <span className="font-fredoka text-xl font-black text-[#8DA0A5] sm:text-3xl">{pieceIndex + 1}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mt-5 flex min-h-24 w-full max-w-3xl flex-wrap items-center justify-center gap-3 rounded-[2rem] border-4 border-dashed border-[#1A2F33] bg-white/75 p-3" aria-label="Puzzle pieces tray">
+              {pieceOrder.filter((pieceIndex) => earnedPieces.includes(pieceIndex) && !placedPieces.includes(pieceIndex)).map((pieceIndex) => (
+                <motion.button
+                  key={pieceIndex}
+                  type="button"
+                  drag={!puzzleLocked}
+                  dragMomentum={false}
+                  dragSnapToOrigin
+                  whileDrag={{ scale: 1.12, zIndex: 50 }}
+                  onClick={() => setActivePiece(pieceIndex)}
+                  onDragEnd={(_, info) => handlePieceDrop(pieceIndex, info.point.x, info.point.y)}
+                  disabled={puzzleLocked}
+                  className={`relative h-20 w-20 touch-none rounded-xl border-[4px] border-[#1A2F33] shadow-[0_5px_0_#1A2F33] sm:h-24 sm:w-24 ${activePiece === pieceIndex ? "ring-4 ring-[#FF9F68]" : ""}`}
+                  aria-label={`Puzzle piece ${pieceIndex + 1}. Drag it to space ${pieceIndex + 1}`}
+                >
+                  <PuzzleSlice sticker={favoriteSticker} pieceIndex={pieceIndex} />
+                </motion.button>
+              ))}
+              {placedPieces.length === 8 && <span className="font-fredoka text-2xl font-black text-[#16834B]">Puzzle complete!</span>}
+            </div>
           </section>
         )}
 
         {phase === "complete" && (
           <section className="relative flex min-h-0 flex-col items-center justify-center overflow-hidden rounded-[2.5rem] border-[6px] border-[#1A2F33] bg-[#FFEA00] p-6 text-center shadow-[0_10px_0_#1A2F33]">
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-8xl">⭐</motion.div>
-            <h2 className="mt-2 font-fredoka text-4xl font-black text-[#1A2F33] sm:text-5xl">Level 1 Complete!</h2>
-            <p className="mt-3 font-fredoka text-xl font-bold text-[#1A2F33]">You earned {stars} stars. Returning to the map…</p>
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-8xl">🧩</motion.div>
+            <h2 className="mt-2 font-fredoka text-4xl font-black text-[#1A2F33] sm:text-5xl">Puzzle Complete!</h2>
+            <p className="mt-3 font-fredoka text-xl font-bold text-[#1A2F33]">You rebuilt your {favoriteSticker?.name} sticker and earned {stars} stars. Returning to the map…</p>
           </section>
         )}
 
-        <CollectionRail stickers={stickers} stars={stars} />
+        <CollectionRail stickers={stickers} stars={stars} favorite={favoriteSticker} earnedPieces={earnedPieces} />
       </div>
     </main>
   );
