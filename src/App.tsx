@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { PhonicsGame } from "./components/PhonicsGame";
 import { LetterGame, type FoodSticker } from "./components/LetterGame";
+import { BearHost } from "./components/BearHost";
 import { initAudio, pickFreshLine, speakText } from "./utils/audio";
 
 import forestBg from "./assets/images/cartoon_forest_bg_1784540338051.jpg";
@@ -15,9 +16,9 @@ import dogImg from "./assets/images/dog_closeup_holding_card_solid_1784547773486
 type AppScreen = "landing" | "levels" | "letters" | "vocabulary";
 
 const levelWelcomeLines = [
-  "Welcome, sound explorer! Pick a trail and let's play.",
-  "The forest is ready for you. Which sound adventure should we try?",
-  "Hello, phonics friend! Choose a level and we'll explore it together.",
+  "Hooray, you're here! I'm Benny Bear, and I am so excited to learn sounds with you!",
+  "Yay! The forest is ready, and I can hardly wait to hear your amazing sounds!",
+  "Hello, phonics superstar! Benny Bear is cheering for you all the way!",
 ];
 
 function ForestBackground() {
@@ -63,6 +64,7 @@ function Landing({ onStart }: { onStart: () => void }) {
           START
         </button>
       </motion.div>
+      <BearHost message="Hi! I'm Benny Bear. I can't wait to hear your super sounds!" className="bottom-3" />
     </main>
   );
 }
@@ -196,6 +198,11 @@ function LevelMap({
           </motion.button>
         </section>
       </div>
+      <BearHost
+        message={levelOneComplete ? (autoLaunching ? "You did it! Level 2 is opening—let's go!" : "Both trails are ready. I'm right beside you!") : "Let's finish Level 1 together and unlock the next trail!"}
+        className="bottom-2"
+        compact
+      />
     </main>
   );
 }
@@ -247,7 +254,7 @@ export default function App() {
 
   if (screen === "landing") return <Landing onStart={showLevels} />;
   if (screen === "letters") return <LetterGame onExit={showLevels} onComplete={completeLevelOne} />;
-  if (screen === "vocabulary") return <PhonicsGame onExit={showLevels} />;
+  if (screen === "vocabulary") return <PhonicsGame onExit={showLevels} stickers={collectedStickers} />;
 
   return (
     <LevelMap

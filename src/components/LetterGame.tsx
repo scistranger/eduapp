@@ -8,6 +8,7 @@ import {
   playRewardSound,
   speakText,
 } from "../utils/audio";
+import { BearHost } from "./BearHost";
 
 import forestBg from "../assets/images/cartoon_forest_bg_1784540338051.jpg";
 
@@ -33,17 +34,24 @@ const foodStickers: FoodSticker[] = [
 ];
 
 const introPrompts = [
-  (letter: string) => `Here comes letter ${letter.toUpperCase()}. Listen, then tap the card to crack it.`,
-  (letter: string) => `Say hello to ${letter.toUpperCase()}. Hear its sound, then crack the card open.`,
-  (letter: string) => `Our next sound friend is ${letter.toUpperCase()}. Listen, then give the card a tap.`,
-  (letter: string) => `Look at ${letter.toUpperCase()}. Hear the sound, then crack it to find a surprise.`,
+  (letter: string) => `Ooh, here comes letter ${letter.toUpperCase()}! Listen carefully, then repeat its sound out loud!`,
+  (letter: string) => `Yay, it's ${letter.toUpperCase()}! Hear the sound, then show Benny Bear how brilliantly you can say it!`,
+  (letter: string) => `Look, our next sound friend is ${letter.toUpperCase()}! Listen, then repeat it with your strongest phonics voice!`,
+  (letter: string) => `Wonderful, it's ${letter.toUpperCase()}! Hear the sound and say it back out loud for Benny Bear!`,
 ];
 
 const stickerLines = [
-  (name: string) => `Crack! You found a ${name} sticker.`,
-  (name: string) => `What a surprise! A ${name} sticker joins your collection.`,
-  (name: string) => `You cracked it open and discovered ${name}.`,
-  (name: string) => `Nice tapping! Your new sticker is ${name}.`,
+  (name: string) => `WOW! You cracked it open and found a ${name} sticker! That's fantastic!`,
+  (name: string) => `Hooray! A ${name} sticker popped out! I am so happy for you!`,
+  (name: string) => `Amazing! You discovered ${name}! What a brilliant surprise!`,
+  (name: string) => `Yes! Your super sound unlocked a ${name} sticker! Wonderful job!`,
+];
+
+const repeatPrompts = [
+  "Your turn! Say that sound out loud, then tap the orange button. I can't wait to hear you!",
+  "Now you try! Repeat the sound with your best phonics voice, then tell me you said it!",
+  "Let's hear your amazing voice! Say the sound out loud, then tap “I said the sound!”",
+  "Benny Bear is listening! Repeat that sound proudly, then tap the orange button!",
 ];
 
 const quizPrompts = [
@@ -54,11 +62,11 @@ const quizPrompts = [
 ];
 
 const correctLines = [
-  "Yes! You earned a star for wonderful listening.",
-  "That's the one! Another star for your collection.",
-  "You got it! That correct match earns a bright star.",
-  "Wonderful! You caught that sound and won a star.",
-  "Exactly right! Your star trail is growing.",
+  "YES! You found it! I am so proud of you—here comes a bright star!",
+  "Hooray, that's the one! Your wonderful listening earned another star!",
+  "You got it! That was absolutely brilliant—your star trail is sparkling!",
+  "WOW! You caught that sound perfectly and won a beautiful star!",
+  "Exactly right! Benny Bear is doing a happy dance for you!",
 ];
 
 const tryAgainLines = [
@@ -142,6 +150,7 @@ export function LetterGame({
   const [phase, setPhase] = useState<Phase>("intro");
   const [introIndex, setIntroIndex] = useState(0);
   const [introReady, setIntroReady] = useState(false);
+  const [hasRepeated, setHasRepeated] = useState(false);
   const [isCracked, setIsCracked] = useState(false);
   const [stickerDeck] = useState(() => shuffle(foodStickers));
   const [stickers, setStickers] = useState<FoodSticker[]>([]);
@@ -173,6 +182,7 @@ export function LetterGame({
       const lineMaker = introPrompts[introIndex % introPrompts.length];
       await speakText(lineMaker(introLetter), 0.94, 1.16);
       await playPhoneme(introLetter);
+      await speakText(repeatPrompts[introIndex % repeatPrompts.length], 1.0, 1.23);
       if (active) setIntroReady(true);
     };
 
@@ -204,7 +214,7 @@ export function LetterGame({
   }, [phase, quizIndex, quizTarget]);
 
   const crackCard = async () => {
-    if (!introReady || isCracked) return;
+    if (!introReady || !hasRepeated || isCracked) return;
     initAudio();
     setIntroReady(false);
     setIsCracked(true);
@@ -216,11 +226,20 @@ export function LetterGame({
     await speakText(line, 0.98, 1.2);
   };
 
+  const confirmRepeatedSound = async () => {
+    if (!introReady || hasRepeated || isCracked) return;
+    setIntroReady(false);
+    setHasRepeated(true);
+    await speakText("YES! I heard your super phonics voice! Now tap the card and crack it right down the middle!", 1.02, 1.26);
+    setIntroReady(true);
+  };
+
   const moveFromIntro = async () => {
     if (!isCracked) return;
 
     if (introIndex < learningLetters.length - 1) {
       setIsCracked(false);
+      setHasRepeated(false);
       setNewSticker(null);
       setIntroIndex((index) => index + 1);
       return;
@@ -299,7 +318,7 @@ export function LetterGame({
 
       <div className="relative z-10 mx-auto mt-3 grid min-h-0 w-full max-w-7xl flex-1 gap-3 sm:grid-cols-[minmax(0,1fr)_220px] sm:gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">
         {phase === "intro" && (
-          <section className="flex min-h-0 flex-col items-center justify-center rounded-[2.5rem] border-[5px] border-[#1A2F33] bg-white/80 p-3 shadow-[0_8px_0_#1A2F33] sm:p-5">
+          <section className="relative flex min-h-0 flex-col items-center justify-center overflow-hidden rounded-[2.5rem] border-[5px] border-[#1A2F33] bg-white/80 p-3 shadow-[0_8px_0_#1A2F33] sm:p-5">
             <div className="mb-3 flex gap-1.5" aria-label={`Letter ${introIndex + 1} of ${learningLetters.length}`}>
               {learningLetters.map((letter, index) => (
                 <span
@@ -310,44 +329,58 @@ export function LetterGame({
             </div>
 
             <p className="mb-2 text-center font-fredoka text-lg font-black text-[#1A2F33] sm:text-2xl">
-              {isCracked ? "Sticker collected!" : "Listen, then tap the big letter to crack it!"}
+              {isCracked
+                ? "Sticker collected—amazing!"
+                : hasRepeated
+                  ? "Great speaking! Now tap the card to crack it!"
+                  : "1. Listen  2. Repeat the sound out loud  3. Crack the card"}
             </p>
 
             <motion.button
               key={introLetter}
               type="button"
               onClick={crackCard}
-              disabled={!introReady || isCracked}
+              disabled={!introReady || !hasRepeated || isCracked}
               initial={{ scale: 0.55, y: 40, rotate: -7 }}
-              animate={isCracked
-                ? { scale: [1, 1.08, 0.96, 1], rotate: [0, -4, 5, 0] }
-                : { scale: 1, y: 0, rotate: 0 }}
+              animate={{ scale: 1, y: 0, rotate: 0 }}
               transition={{ type: "spring", bounce: 0.55 }}
-              whileTap={!introReady || isCracked ? undefined : { scale: 0.93 }}
-              className={`relative flex h-56 w-44 touch-manipulation items-center justify-center overflow-visible rounded-[2.8rem] border-[7px] border-[#1A2F33] font-fredoka text-[9rem] font-black uppercase leading-none text-[#1A2F33] shadow-[0_12px_0_#1A2F33] sm:h-64 sm:w-52 sm:text-[11rem] ${isCracked ? "bg-[#FFF3A5]" : "bg-[#FFEA00]"}`}
-              aria-label={isCracked ? `Letter ${introLetter}, cracked` : `Tap letter ${introLetter} to crack the card`}
+              whileTap={!introReady || !hasRepeated || isCracked ? undefined : { scale: 0.92 }}
+              className="relative h-56 w-44 touch-manipulation overflow-visible disabled:cursor-default sm:h-64 sm:w-52"
+              aria-label={isCracked ? `Letter ${introLetter}, split open` : `Tap letter ${introLetter} to split the card open`}
             >
-              {introLetter}
-              <AnimatePresence>
-                {isCracked && (
-                  <>
-                    <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} className="absolute left-[18%] top-[35%] h-2 w-[58%] origin-left rotate-[26deg] rounded-full bg-[#1A2F33]" />
-                    <motion.span initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} className="absolute left-[48%] top-[16%] h-[44%] w-2 origin-top rotate-[-17deg] rounded-full bg-[#1A2F33]" />
-                    <motion.span initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} className="absolute bottom-[24%] left-[31%] h-2 w-[54%] origin-left rotate-[-35deg] rounded-full bg-[#1A2F33]" />
-                  </>
-                )}
-              </AnimatePresence>
+              <motion.span
+                animate={isCracked ? { x: -112, y: 12, rotate: -11 } : { x: 0, y: 0, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 180, damping: 14 }}
+                className="absolute inset-y-0 left-0 block w-[53%] overflow-hidden border-[7px] border-[#1A2F33] bg-[#FFEA00] shadow-[0_12px_0_#1A2F33]"
+                style={{ clipPath: "polygon(0 0, 100% 0, 86% 13%, 100% 27%, 84% 42%, 100% 57%, 85% 72%, 100% 86%, 89% 100%, 0 100%)", borderRadius: "2.8rem 0.5rem 0.5rem 2.8rem" }}
+                aria-hidden="true"
+              >
+                <span className="absolute inset-y-0 left-0 flex w-[188%] items-center justify-center font-fredoka text-[9rem] font-black uppercase leading-none text-[#1A2F33] sm:text-[11rem]">
+                  {introLetter}
+                </span>
+              </motion.span>
+              <motion.span
+                animate={isCracked ? { x: 112, y: 12, rotate: 11 } : { x: 0, y: 0, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 180, damping: 14 }}
+                className="absolute inset-y-0 right-0 block w-[53%] overflow-hidden border-[7px] border-[#1A2F33] bg-[#FFEA00] shadow-[0_12px_0_#1A2F33]"
+                style={{ clipPath: "polygon(11% 0, 100% 0, 100% 100%, 10% 100%, 0 86%, 15% 72%, 0 57%, 16% 42%, 0 27%, 14% 13%)", borderRadius: "0.5rem 2.8rem 2.8rem 0.5rem" }}
+                aria-hidden="true"
+              >
+                <span className="absolute inset-y-0 right-0 flex w-[188%] items-center justify-center font-fredoka text-[9rem] font-black uppercase leading-none text-[#1A2F33] sm:text-[11rem]">
+                  {introLetter}
+                </span>
+              </motion.span>
 
               <AnimatePresence>
                 {newSticker && (
                   <motion.span
-                    initial={{ scale: 0, y: 50, rotate: -25 }}
-                    animate={{ scale: 1, y: -10, rotate: 8 }}
-                    transition={{ delay: 0.15, type: "spring", bounce: 0.65 }}
-                    className={`absolute -right-16 -top-8 z-20 flex h-28 w-28 flex-col items-center justify-center rounded-full border-[5px] border-[#1A2F33] text-6xl shadow-[0_7px_0_#1A2F33] sm:-right-24 sm:h-32 sm:w-32 sm:text-7xl ${newSticker.color}`}
+                    initial={{ scale: 0, rotate: -35 }}
+                    animate={{ scale: 1, rotate: 8 }}
+                    transition={{ delay: 0.14, type: "spring", bounce: 0.72 }}
+                    className={`absolute inset-0 z-20 m-auto flex h-32 w-32 flex-col items-center justify-center rounded-full border-[5px] border-[#1A2F33] text-7xl shadow-[0_8px_0_#1A2F33] sm:h-36 sm:w-36 sm:text-8xl ${newSticker.color}`}
                   >
                     {newSticker.emoji}
-                    <span className="mt-1 max-w-[90%] truncate font-fredoka text-[10px] font-black normal-case text-[#1A2F33] sm:text-xs">{newSticker.name}</span>
+                    <span className="mt-1 max-w-[90%] truncate font-fredoka text-xs font-black normal-case text-[#1A2F33]">{newSticker.name}</span>
                   </motion.span>
                 )}
               </AnimatePresence>
@@ -361,6 +394,18 @@ export function LetterGame({
               >
                 🔊 HEAR AGAIN
               </button>
+              {!hasRepeated && !isCracked && (
+                <motion.button
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  type="button"
+                  onClick={confirmRepeatedSound}
+                  disabled={!introReady}
+                  className="rounded-full border-4 border-[#1A2F33] bg-[#FF9F68] px-6 py-3 font-fredoka text-lg font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33] disabled:opacity-50"
+                >
+                  🗣️ I SAID THE SOUND!
+                </motion.button>
+              )}
               {isCracked && (
                 <motion.button
                   initial={{ scale: 0 }}
@@ -373,11 +418,16 @@ export function LetterGame({
                 </motion.button>
               )}
             </div>
+            <BearHost
+              compact
+              className="bottom-0"
+              message={isCracked ? "WOW! A sticker! You were amazing!" : hasRepeated ? "Fantastic voice! Tap the card and split it open!" : "Say the sound out loud, then tap “I SAID THE SOUND!”"}
+            />
           </section>
         )}
 
         {phase === "quiz" && (
-          <section className="flex min-h-0 flex-col items-center justify-center rounded-[2.5rem] border-[5px] border-[#1A2F33] bg-white/80 p-3 shadow-[0_8px_0_#1A2F33] sm:p-5">
+          <section className="relative flex min-h-0 flex-col items-center justify-center overflow-hidden rounded-[2.5rem] border-[5px] border-[#1A2F33] bg-white/80 p-3 shadow-[0_8px_0_#1A2F33] sm:p-5">
             <div className="mb-4 rounded-[2rem] border-4 border-[#1A2F33] bg-white px-5 py-3 text-center shadow-[0_5px_0_#1A2F33]">
               <p className="font-fredoka text-sm font-bold uppercase tracking-[0.16em] text-[#008FA6]">Star Challenge {quizIndex + 1}/{quizOrder.length}</p>
               <h1 className="font-fredoka text-2xl font-black text-[#1A2F33] sm:text-3xl">Which letter did you hear?</h1>
@@ -416,14 +466,20 @@ export function LetterGame({
                 );
               })}
             </div>
+            <BearHost
+              compact
+              className="bottom-0"
+              message={feedback === "correct" ? "YES! You got it! I'm doing my happy dance!" : `You're doing brilliantly—${stars} star${stars === 1 ? "" : "s"} already!`}
+            />
           </section>
         )}
 
         {phase === "complete" && (
-          <section className="flex min-h-0 flex-col items-center justify-center rounded-[2.5rem] border-[6px] border-[#1A2F33] bg-[#FFEA00] p-6 text-center shadow-[0_10px_0_#1A2F33]">
+          <section className="relative flex min-h-0 flex-col items-center justify-center overflow-hidden rounded-[2.5rem] border-[6px] border-[#1A2F33] bg-[#FFEA00] p-6 text-center shadow-[0_10px_0_#1A2F33]">
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-8xl">⭐</motion.div>
             <h2 className="mt-2 font-fredoka text-4xl font-black text-[#1A2F33] sm:text-5xl">Level 1 Complete!</h2>
             <p className="mt-3 font-fredoka text-xl font-bold text-[#1A2F33]">You earned {stars} stars. Returning to the map…</p>
+            <BearHost compact className="bottom-0" message="You did it! I am SO happy for you!" />
           </section>
         )}
 
