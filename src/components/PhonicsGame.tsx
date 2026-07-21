@@ -22,7 +22,7 @@ const quizLetters = ['b', 'f', 'h', 'c', 'r', 'm'];
 
 const gameWelcomeLines = [
   "HOORAY! You unlocked the -at Word Playground! I am so excited to build words with you!",
-  "Yay, you made it to level two! Let's make amazing -at words together!",
+  "Yay, you made it to stage three! Let's make amazing -at words together!",
   "Fantastic work unlocking this trail! I can hardly wait to hear your words!",
 ];
 
@@ -227,7 +227,7 @@ export function PhonicsGame({ onExit }: { onExit: () => void }) {
           onClick={onExit}
           className="absolute left-4 top-4 z-30 rounded-full border-4 border-[#1A2F33] bg-white px-4 py-2 font-fredoka text-lg font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33]"
         >
-          ← LEVELS
+          ← STAGES
         </button>
         <div className="relative z-20 flex h-full w-full flex-col items-center justify-center px-4">
           <motion.div
@@ -257,10 +257,10 @@ export function PhonicsGame({ onExit }: { onExit: () => void }) {
             onClick={onExit}
             className="rounded-full border-4 border-[#1A2F33] bg-white px-3 py-2 font-fredoka text-sm font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33] sm:px-5 sm:text-lg"
           >
-            ← LEVELS
+            ← STAGES
           </button>
           <div className="rounded-full border-4 border-[#1A2F33] bg-[#69F0AE] px-3 py-2 text-center font-fredoka text-sm font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33] sm:px-6 sm:text-lg">
-            LEVEL 2 · FIRST SOUND QUIZ
+            STAGE 3 · FIRST SOUND QUIZ
           </div>
         </div>
 
@@ -400,7 +400,7 @@ export function PhonicsGame({ onExit }: { onExit: () => void }) {
                     onClick={onExit}
                     className="bg-[#00B8D4] text-white text-lg sm:text-xl font-fredoka font-black py-3 px-7 rounded-full border-[5px] border-[#1A2F33] shadow-[0_7px_0_#1A2F33]"
                   >
-                    LEVEL MAP
+                    STAGE MAP
                   </button>
                 </div>
               </motion.div>
@@ -436,10 +436,10 @@ export function PhonicsGame({ onExit }: { onExit: () => void }) {
           onClick={onExit}
           className="rounded-full border-4 border-[#1A2F33] bg-white px-3 py-2 font-fredoka text-sm font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33] sm:px-5 sm:text-lg"
         >
-          ← LEVELS
+          ← STAGES
         </button>
         <div className="rounded-full border-4 border-[#1A2F33] bg-[#69F0AE] px-3 py-2 text-center font-fredoka text-sm font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33] sm:px-6 sm:text-lg">
-          LEVEL 2 · WORD {vocabIndex + 1}/{vocabs.length}
+          STAGE 3 · WORD {vocabIndex + 1}/{vocabs.length}
         </div>
       </div>
       

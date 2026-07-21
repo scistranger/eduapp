@@ -11,8 +11,6 @@ import {
 
 import forestBg from "../assets/images/cartoon_forest_bg_1784540338051.jpg";
 
-const learningLetters = ["b", "m", "r", "f", "h", "a", "t", "c"];
-
 export type FoodSticker = {
   id: string;
   emoji: string;
@@ -86,10 +84,10 @@ const shuffle = <T,>(items: T[]) => {
   return copy;
 };
 
-const buildChoices = (target: string) =>
+const buildChoices = (target: string, letterPool: string[]) =>
   shuffle([
     target,
-    ...shuffle(learningLetters.filter((letter) => letter !== target)).slice(0, 2),
+    ...shuffle(letterPool.filter((letter) => letter !== target)).slice(0, 2),
   ]);
 
 function Background() {
@@ -106,18 +104,20 @@ function CollectionRail({
   stars,
   favorite,
   earnedPieces,
+  totalRewards,
 }: {
   stickers: FoodSticker[];
   stars: number;
   favorite: FoodSticker | null;
   earnedPieces: number[];
+  totalRewards: number;
 }) {
   return (
     <aside className="flex min-h-0 flex-col rounded-[2rem] border-[5px] border-[#1A2F33] bg-white/95 p-3 shadow-[0_8px_0_#1A2F33] sm:h-full sm:p-4" aria-label="Reward collection">
       <div className="mb-3 flex items-center justify-between gap-2 border-b-4 border-dashed border-[#AAC1C4] pb-3 sm:block sm:text-center">
         <div>
           <p className="font-fredoka text-xs font-bold uppercase tracking-[0.16em] text-[#008FA6] sm:text-sm">My stickers</p>
-          <p className="font-fredoka text-lg font-black text-[#1A2F33] sm:text-xl">{stickers.length}/{learningLetters.length} collected</p>
+          <p className="font-fredoka text-lg font-black text-[#1A2F33] sm:text-xl">{stickers.length}/{totalRewards} collected</p>
         </div>
         <div className="rounded-full border-[3px] border-[#1A2F33] bg-[#FFEA00] px-3 py-1 font-fredoka text-lg font-black text-[#1A2F33] shadow-[0_3px_0_#1A2F33] sm:mt-2 sm:inline-flex">
           ⭐ {stars}
@@ -131,11 +131,11 @@ function CollectionRail({
             <span className="text-4xl">{favorite.emoji}</span>
             <div className="text-left">
               <p className="font-fredoka text-sm font-black text-[#1A2F33]">{favorite.name}</p>
-              <p className="font-fredoka text-xs font-bold text-[#38545A]">🧩 {earnedPieces.length}/8 pieces</p>
+              <p className="font-fredoka text-xs font-bold text-[#38545A]">🧩 {earnedPieces.length}/{totalRewards} pieces</p>
             </div>
           </div>
           <div className="mt-2 grid grid-cols-4 gap-1">
-            {Array.from({ length: 8 }, (_, index) => (
+            {Array.from({ length: totalRewards }, (_, index) => (
               <motion.span
                 key={index}
                 animate={earnedPieces.includes(index) ? { scale: [0.7, 1.15, 1], rotate: [0, -8, 0] } : {}}
@@ -149,7 +149,7 @@ function CollectionRail({
       )}
 
       <div className="grid min-h-0 flex-1 grid-cols-4 gap-2 overflow-y-auto sm:grid-cols-2 sm:content-start">
-        {Array.from({ length: learningLetters.length }, (_, index) => {
+        {Array.from({ length: totalRewards }, (_, index) => {
           const sticker = stickers[index];
           return sticker ? (
             <motion.div
@@ -174,19 +174,19 @@ function CollectionRail({
 }
 
 function PuzzleSlice({ sticker, pieceIndex }: { sticker: FoodSticker; pieceIndex: number }) {
-  const column = pieceIndex % 4;
-  const row = Math.floor(pieceIndex / 4);
+  const column = pieceIndex % 2;
+  const row = Math.floor(pieceIndex / 2);
 
   return (
     <div className={`absolute inset-0 overflow-hidden rounded-xl ${sticker.color}`}>
       <span
         className="absolute flex items-center justify-center leading-none"
         style={{
-          width: "400%",
+          width: "200%",
           height: "200%",
           left: `-${column * 100}%`,
           top: `-${row * 100}%`,
-          fontSize: "clamp(10rem, 27vw, 18rem)",
+          fontSize: "clamp(12rem, 38vw, 22rem)",
         }}
         aria-hidden="true"
       >
@@ -202,10 +202,17 @@ function PuzzleSlice({ sticker, pieceIndex }: { sticker: FoodSticker; pieceIndex
 export function LetterGame({
   onExit,
   onComplete,
+  stageNumber,
+  letters,
+  nextStageName,
 }: {
   onExit: () => void;
   onComplete: (result: { stars: number; stickers: FoodSticker[] }) => void;
+  stageNumber: 1 | 2;
+  letters: string[];
+  nextStageName: string;
 }) {
+  const puzzlePieceCount = letters.length;
   const [phase, setPhase] = useState<Phase>("intro");
   const [introIndex, setIntroIndex] = useState(0);
   const [introReady, setIntroReady] = useState(false);
@@ -218,11 +225,11 @@ export function LetterGame({
   const [favoriteLocked, setFavoriteLocked] = useState(false);
   const [stars, setStars] = useState(0);
   const [earnedPieces, setEarnedPieces] = useState<number[]>([]);
-  const [pieceOrder] = useState(() => shuffle(Array.from({ length: 8 }, (_, index) => index)));
+  const [pieceOrder] = useState(() => shuffle(Array.from({ length: puzzlePieceCount }, (_, index) => index)));
   const [placedPieces, setPlacedPieces] = useState<number[]>([]);
   const [activePiece, setActivePiece] = useState<number | null>(null);
   const [puzzleLocked, setPuzzleLocked] = useState(false);
-  const [quizOrder] = useState(() => shuffle(learningLetters));
+  const [quizOrder] = useState(() => shuffle(letters));
   const [quizIndex, setQuizIndex] = useState(0);
   const [quizLocked, setQuizLocked] = useState(true);
   const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
@@ -232,9 +239,9 @@ export function LetterGame({
   const previousTryAgain = useRef<string | null>(null);
   const slotRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
-  const introLetter = learningLetters[introIndex];
+  const introLetter = letters[introIndex];
   const quizTarget = quizOrder[quizIndex];
-  const choices = useMemo(() => buildChoices(quizTarget), [quizTarget]);
+  const choices = useMemo(() => buildChoices(quizTarget, letters), [letters, quizTarget]);
 
   useEffect(() => {
     initAudio();
@@ -292,7 +299,7 @@ export function LetterGame({
     const line = pickFreshLine(stickerLines.map((builder) => builder(sticker.name)));
     await speakText(line, 0.98, 1.2);
 
-    if (introIndex < learningLetters.length - 1) {
+    if (introIndex < letters.length - 1) {
       setIsCracked(false);
       setHasRepeated(false);
       setNewSticker(null);
@@ -300,7 +307,7 @@ export function LetterGame({
       return;
     }
 
-    await speakText("WOW! You collected all eight stickers! Now choose your favorite one. It will become your special quiz puzzle!", 0.98, 1.22);
+    await speakText("WOW! You collected all four stickers! Now choose your favorite one. It will become your special quiz puzzle!", 0.98, 1.22);
     setPhase("favorite");
   };
 
@@ -310,7 +317,7 @@ export function LetterGame({
     setFavoriteSticker(sticker);
     await playRewardSound();
     const spokenName = sticker.id === "pineapple-bun" ? "pineapple bun" : sticker.name;
-    await speakText(`Excellent choice! Your ${spokenName} sticker is now an eight-piece puzzle. Earn one piece for every correct sound!`, 0.98, 1.22);
+    await speakText(`Excellent choice! Your ${spokenName} sticker is now a four-piece puzzle. Earn one piece for every correct sound!`, 0.98, 1.22);
     setPhase("quiz");
     setFavoriteLocked(false);
   };
@@ -354,7 +361,7 @@ export function LetterGame({
 
       if (quizIndex === quizOrder.length - 1) {
         await playRewardSound();
-        await speakText("You earned all eight puzzle pieces! Now drag each piece into the empty frame to rebuild your favorite sticker!", 0.96, 1.2);
+        await speakText("You earned all four puzzle pieces! Now drag each piece into the empty frame to rebuild your favorite sticker!", 0.96, 1.2);
         setPhase("puzzle");
         return;
       }
@@ -381,15 +388,15 @@ export function LetterGame({
     setActivePiece(null);
     await playRewardSound();
 
-    if (nextPlaced.length === 8) {
+    if (nextPlaced.length === puzzlePieceCount) {
       setPhase("complete");
-      await speakText(`You completed the ${favoriteSticker?.name || "sticker"} puzzle! Level one is complete, and level two is ready for you!`, 0.98, 1.22);
+      await speakText(`You completed the ${favoriteSticker?.name || "sticker"} puzzle! Stage ${stageNumber} is complete, and ${nextStageName} is ready for you!`, 0.98, 1.22);
       await new Promise((resolve) => setTimeout(resolve, 1400));
       onComplete({ stars, stickers });
       return;
     }
 
-    await speakText(`Perfect fit! ${8 - nextPlaced.length} puzzle pieces to go.`, 1.0, 1.2);
+    await speakText(`Perfect fit! ${puzzlePieceCount - nextPlaced.length} puzzle pieces to go.`, 1.0, 1.2);
     setPuzzleLocked(false);
   };
 
@@ -419,18 +426,18 @@ export function LetterGame({
           onClick={onExit}
           className="rounded-full border-4 border-[#1A2F33] bg-white px-4 py-2 font-fredoka text-base font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33] transition-all hover:translate-y-1 hover:shadow-[0_2px_0_#1A2F33] sm:text-xl"
         >
-          ← LEVELS
+          ← STAGES
         </button>
         <div className="rounded-full border-4 border-[#1A2F33] bg-[#FFEA00] px-4 py-2 text-center font-fredoka text-base font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33] sm:px-7 sm:text-xl">
-          LEVEL 1 · {phase === "intro" ? "LETTER SOUND TRAIL" : phase === "favorite" ? "CHOOSE A FAVORITE" : phase === "quiz" ? "PUZZLE PIECE QUIZ" : phase === "puzzle" ? "BUILD YOUR PUZZLE" : "COMPLETE"}
+          STAGE {stageNumber} · {phase === "intro" ? "LETTER SOUND TRAIL" : phase === "favorite" ? "CHOOSE A FAVORITE" : phase === "quiz" ? "PUZZLE PIECE QUIZ" : phase === "puzzle" ? "BUILD YOUR PUZZLE" : "COMPLETE"}
         </div>
       </header>
 
       <div className="relative z-10 mx-auto mt-3 grid min-h-0 w-full max-w-7xl flex-1 gap-3 sm:grid-cols-[minmax(0,1fr)_220px] sm:gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">
         {phase === "intro" && (
           <section className="relative flex min-h-0 flex-col items-center justify-center overflow-hidden rounded-[2.5rem] border-[5px] border-[#1A2F33] bg-white/80 p-3 shadow-[0_8px_0_#1A2F33] sm:p-5">
-            <div className="mb-3 flex gap-1.5" aria-label={`Letter ${introIndex + 1} of ${learningLetters.length}`}>
-              {learningLetters.map((letter, index) => (
+            <div className="mb-3 flex gap-1.5" aria-label={`Letter ${introIndex + 1} of ${letters.length}`}>
+              {letters.map((letter, index) => (
                 <span
                   key={letter}
                   className={`h-3 w-7 rounded-full border-2 border-[#1A2F33] sm:w-10 ${index <= introIndex ? "bg-[#FFEA00]" : "bg-white"}`}
@@ -567,7 +574,7 @@ export function LetterGame({
               <h1 className="font-fredoka text-2xl font-black text-[#1A2F33] sm:text-3xl">Which letter did you hear?</h1>
               {favoriteSticker && (
                 <p className="mt-1 font-fredoka text-sm font-black text-[#16834B] sm:text-base">
-                  {favoriteSticker.emoji} Puzzle pieces: {earnedPieces.length}/8
+                  {favoriteSticker.emoji} Puzzle pieces: {earnedPieces.length}/{puzzlePieceCount}
                 </p>
               )}
               <button
@@ -628,9 +635,10 @@ export function LetterGame({
               <p className="mt-1 font-andika text-sm font-bold text-[#38545A] sm:text-lg">Drag each piece into its matching space. You can also tap a piece, then tap its space.</p>
             </div>
 
-            <div className="w-full max-w-2xl rounded-[2rem] border-[7px] border-[#1A2F33] bg-[#DDEBED] p-2 shadow-[0_10px_0_#1A2F33] sm:p-3">
-              <div className="grid grid-cols-4 gap-1.5 sm:gap-2" aria-label="Empty puzzle frame">
-                {Array.from({ length: 8 }, (_, pieceIndex) => {
+            <div className="grid w-full max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+              <div className="w-full rounded-[2rem] border-[7px] border-[#1A2F33] bg-[#DDEBED] p-2 shadow-[0_10px_0_#1A2F33] sm:p-3">
+                <div className="grid grid-cols-2 gap-1.5 sm:gap-2" aria-label="Empty puzzle frame">
+                {Array.from({ length: puzzlePieceCount }, (_, pieceIndex) => {
                   const isPlaced = placedPieces.includes(pieceIndex);
                   const isTargeted = activePiece === pieceIndex;
                   return (
@@ -652,11 +660,11 @@ export function LetterGame({
                     </button>
                   );
                 })}
+                </div>
               </div>
-            </div>
 
-            <div className="mt-5 w-full max-w-2xl rounded-[2rem] border-[7px] border-dashed border-[#1A2F33] bg-white/75 p-2 shadow-[0_10px_0_#1A2F33] sm:p-3" aria-label="Puzzle pieces tray">
-              <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+              <div className="w-full rounded-[2rem] border-[7px] border-dashed border-[#1A2F33] bg-white/75 p-2 shadow-[0_10px_0_#1A2F33] sm:p-3" aria-label="Puzzle pieces tray">
+                <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
                 {pieceOrder.map((pieceIndex) => {
                   const isAvailable = earnedPieces.includes(pieceIndex) && !placedPieces.includes(pieceIndex);
 
@@ -680,8 +688,9 @@ export function LetterGame({
                     <div key={pieceIndex} className="aspect-square w-full rounded-xl border-[3px] border-dashed border-[#AAC1C4] bg-white/30" aria-hidden="true" />
                   );
                 })}
+                </div>
+                {placedPieces.length === puzzlePieceCount && <span className="mt-3 block text-center font-fredoka text-2xl font-black text-[#16834B]">Puzzle complete!</span>}
               </div>
-              {placedPieces.length === 8 && <span className="mt-3 block text-center font-fredoka text-2xl font-black text-[#16834B]">Puzzle complete!</span>}
             </div>
           </section>
         )}
@@ -694,7 +703,7 @@ export function LetterGame({
           </section>
         )}
 
-        <CollectionRail stickers={stickers} stars={stars} favorite={favoriteSticker} earnedPieces={earnedPieces} />
+        <CollectionRail stickers={stickers} stars={stars} favorite={favoriteSticker} earnedPieces={earnedPieces} totalRewards={puzzlePieceCount} />
       </div>
     </main>
   );
