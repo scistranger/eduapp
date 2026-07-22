@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { motion } from "motion/react";
 import { PhonicsGame } from "./components/PhonicsGame";
 import { LetterGame, type FoodSticker } from "./components/LetterGame";
-import { initAudio, pickFreshLine, speakText } from "./utils/audio";
+import { initAudio, pickFreshLine, playRewardSound, speakText } from "./utils/audio";
 
 import forestBg from "./assets/images/cartoon_forest_bg_1784540338051.jpg";
 import dogImg from "./assets/images/dog_closeup_holding_card_solid_1784547773486.jpg";
@@ -77,14 +77,14 @@ function LevelMap({
   stageTwoComplete,
   stars,
   stickerCount,
-  autoLaunching,
+  celebratingStage,
 }: {
   onChoose: (stage: PlayStage) => void;
   stageOneComplete: boolean;
   stageTwoComplete: boolean;
   stars: number;
   stickerCount: number;
-  autoLaunching: 2 | 3 | null;
+  celebratingStage: 1 | 2 | null;
 }) {
   return (
     <main className="relative min-h-screen w-full overflow-x-hidden px-4 py-6 font-body sm:px-8 sm:py-8">
@@ -122,6 +122,17 @@ function LevelMap({
             <span className="absolute left-3 top-3 z-20 flex h-14 w-14 items-center justify-center rounded-full border-4 border-[#1A2F33] bg-[#FFEA00] font-fredoka text-3xl font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33]">
               1
             </span>
+            {stageOneComplete && (
+              <motion.span
+                initial={{ scale: 0, rotate: -30 }}
+                animate={celebratingStage === 1 ? { scale: [0, 1.45, 1], rotate: [-30, 12, 0] } : { scale: 1, rotate: 0 }}
+                transition={{ type: "spring", bounce: 0.65, duration: 0.9 }}
+                className="absolute right-3 top-3 z-30 flex flex-col items-center rounded-2xl border-4 border-[#1A2F33] bg-white px-3 py-1 text-3xl shadow-[0_5px_0_#1A2F33]"
+              >
+                ⭐
+                <span className="font-fredoka text-[10px] font-black tracking-wide text-[#16834B]">COMPLETE</span>
+              </motion.span>
+            )}
             <div className="relative mb-4 flex h-48 items-end justify-center overflow-hidden rounded-[2rem] border-4 border-[#1A2F33] bg-[#9BE7F1] sm:h-56">
               <img src={dogImg} alt="Friendly dog holding a phonics card" className="absolute bottom-0 left-1/2 h-[95%] -translate-x-1/2 object-cover object-top opacity-45" />
               <div className="relative z-10 mb-5 grid grid-cols-4 gap-2">
@@ -158,6 +169,17 @@ function LevelMap({
             <span className="absolute left-3 top-3 z-20 flex h-14 w-14 items-center justify-center rounded-full border-4 border-[#1A2F33] bg-[#C9A7FF] font-fredoka text-3xl font-black text-[#1A2F33] shadow-[0_5px_0_#1A2F33]">
               2
             </span>
+            {stageTwoComplete && (
+              <motion.span
+                initial={{ scale: 0, rotate: -30 }}
+                animate={celebratingStage === 2 ? { scale: [0, 1.45, 1], rotate: [-30, 12, 0] } : { scale: 1, rotate: 0 }}
+                transition={{ type: "spring", bounce: 0.65, duration: 0.9 }}
+                className="absolute right-3 top-3 z-30 flex flex-col items-center rounded-2xl border-4 border-[#1A2F33] bg-white px-3 py-1 text-3xl shadow-[0_5px_0_#1A2F33]"
+              >
+                ⭐
+                <span className="font-fredoka text-[10px] font-black tracking-wide text-[#16834B]">COMPLETE</span>
+              </motion.span>
+            )}
             <div className="relative mb-4 flex h-48 items-end justify-center overflow-hidden rounded-[2rem] border-4 border-[#1A2F33] bg-[#D5C4FF] sm:h-56">
               <img src={dogImg} alt="Friendly dog holding a phonics card" className="absolute bottom-0 left-1/2 h-[95%] -translate-x-1/2 object-cover object-top opacity-35" />
               <div className="relative z-10 mb-5 grid grid-cols-4 gap-2">
@@ -176,7 +198,7 @@ function LevelMap({
               <h2 className="font-fredoka text-3xl font-black text-[#1A2F33]">More Sound Friends</h2>
               <p className="mt-2 font-andika text-lg font-bold text-[#38545A]">Meet h, a, t and c. Collect 4 new stickers and complete another puzzle.</p>
               <span className="mt-4 inline-flex rounded-full border-[3px] border-[#1A2F33] bg-[#8C5CD6] px-5 py-2 font-fredoka text-lg font-black text-white transition-transform group-hover:translate-x-1">
-                {stageOneComplete ? (autoLaunching === 2 ? "OPENING STAGE 2…" : stageTwoComplete ? "PLAY AGAIN →" : "PLAY STAGE →") : "🔒 FINISH STAGE 1"}
+                {stageOneComplete ? (stageTwoComplete ? "PLAY AGAIN →" : celebratingStage === 1 ? "NEW! TAP TO ENTER →" : "PLAY STAGE →") : "🔒 FINISH STAGE 1"}
               </span>
             </div>
             {!stageOneComplete && (
@@ -185,14 +207,6 @@ function LevelMap({
                   🔒 LOCKED
                 </span>
               </div>
-            )}
-            {autoLaunching === 2 && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0.45, 0.8, 0.45] }}
-                transition={{ repeat: Infinity, duration: 1.1 }}
-                className="pointer-events-none absolute inset-0 z-30 rounded-[2rem] border-[9px] border-[#C9A7FF]"
-              />
             )}
           </motion.button>
 
@@ -229,7 +243,7 @@ function LevelMap({
               <h2 className="font-fredoka text-3xl font-black text-[#1A2F33]">-at Word Playground</h2>
               <p className="mt-2 font-andika text-lg font-bold text-[#38545A]">Build words, listen, then find the first sound.</p>
               <span className="mt-4 inline-flex rounded-full border-[3px] border-[#1A2F33] bg-[#23B867] px-5 py-2 font-fredoka text-lg font-black text-white transition-transform group-hover:translate-x-1">
-                {stageTwoComplete ? (autoLaunching === 3 ? "OPENING STAGE 3…" : "PLAY STAGE →") : "🔒 FINISH STAGE 2"}
+                {stageTwoComplete ? (celebratingStage === 2 ? "NEW! TAP TO ENTER →" : "PLAY STAGE →") : "🔒 FINISH STAGE 2"}
               </span>
             </div>
             {!stageTwoComplete && (
@@ -238,14 +252,6 @@ function LevelMap({
                   🔒 LOCKED
                 </span>
               </div>
-            )}
-            {autoLaunching === 3 && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0.45, 0.8, 0.45] }}
-                transition={{ repeat: Infinity, duration: 1.1 }}
-                className="pointer-events-none absolute inset-0 z-30 rounded-[2rem] border-[9px] border-[#69F0AE]"
-              />
             )}
           </motion.button>
         </section>
@@ -262,16 +268,12 @@ export default function App() {
   const [stageTwoStars, setStageTwoStars] = useState(0);
   const [stageOneStickers, setStageOneStickers] = useState<FoodSticker[]>([]);
   const [stageTwoStickers, setStageTwoStickers] = useState<FoodSticker[]>([]);
-  const [autoLaunching, setAutoLaunching] = useState<2 | 3 | null>(null);
+  const [celebratingStage, setCelebratingStage] = useState<1 | 2 | null>(null);
   const previousWelcome = useRef<string | null>(null);
-  const launchTimer = useRef<number | null>(null);
-
-  useEffect(() => () => {
-    if (launchTimer.current !== null) window.clearTimeout(launchTimer.current);
-  }, []);
 
   const showStages = () => {
     initAudio();
+    setCelebratingStage(null);
     setScreen("levels");
     const line = pickFreshLine(levelWelcomeLines, previousWelcome.current);
     previousWelcome.current = line;
@@ -281,11 +283,7 @@ export default function App() {
   const chooseStage = (stage: PlayStage) => {
     if (stage === "letters-2" && !stageOneComplete) return;
     if (stage === "vocabulary" && !stageTwoComplete) return;
-    if (launchTimer.current !== null) {
-      window.clearTimeout(launchTimer.current);
-      launchTimer.current = null;
-    }
-    setAutoLaunching(null);
+    setCelebratingStage(null);
     setScreen(stage);
   };
 
@@ -293,28 +291,24 @@ export default function App() {
     setStageOneComplete(true);
     setStageOneStars(stars);
     setStageOneStickers(stickers);
+    setCelebratingStage(1);
     setScreen("levels");
-    setAutoLaunching(2);
-    void speakText("Stage two is unlocked! Four more sound friends are opening now.", 0.96, 1.2);
-    launchTimer.current = window.setTimeout(() => {
-      setAutoLaunching(null);
-      setScreen("letters-2");
-      launchTimer.current = null;
-    }, 2600);
+    void (async () => {
+      await playRewardSound();
+      await speakText("A bright star for finishing stage one! Stage two is unlocked. Tap stage two when you are ready.", 0.96, 1.2);
+    })();
   };
 
   const completeStageTwo = ({ stars, stickers }: { stars: number; stickers: FoodSticker[] }) => {
     setStageTwoComplete(true);
     setStageTwoStars(stars);
     setStageTwoStickers(stickers);
+    setCelebratingStage(2);
     setScreen("levels");
-    setAutoLaunching(3);
-    void speakText("Stage three is unlocked! The -at Word Playground is opening now.", 0.96, 1.2);
-    launchTimer.current = window.setTimeout(() => {
-      setAutoLaunching(null);
-      setScreen("vocabulary");
-      launchTimer.current = null;
-    }, 2600);
+    void (async () => {
+      await playRewardSound();
+      await speakText("A shining star for finishing stage two! Stage three is unlocked. Tap stage three when you are ready.", 0.96, 1.2);
+    })();
   };
 
   if (screen === "landing") return <Landing onStart={showStages} />;
@@ -333,7 +327,7 @@ export default function App() {
       stageTwoComplete={stageTwoComplete}
       stars={stageOneStars + stageTwoStars}
       stickerCount={stageOneStickers.length + stageTwoStickers.length}
-      autoLaunching={autoLaunching}
+      celebratingStage={celebratingStage}
     />
   );
 }

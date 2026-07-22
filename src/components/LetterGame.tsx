@@ -234,6 +234,7 @@ export function LetterGame({
   const [quizLocked, setQuizLocked] = useState(true);
   const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<"correct" | "incorrect" | null>(null);
+  const [rewardPieceIndex, setRewardPieceIndex] = useState<number | null>(null);
   const previousPrompt = useRef<string | null>(null);
   const previousPraise = useRef<string | null>(null);
   const previousTryAgain = useRef<string | null>(null);
@@ -354,18 +355,23 @@ export function LetterGame({
       setStars(nextStars);
       setEarnedPieces(nextPieces);
       setFeedback("correct");
+      setRewardPieceIndex(quizIndex);
       await playRewardSound();
       const line = pickFreshLine(correctLines, previousPraise.current);
       previousPraise.current = line;
       await speakText(`${line} You also earned piece ${quizIndex + 1} of your ${favoriteSticker?.name || "favorite sticker"} puzzle!`, 0.98, 1.22);
+      await new Promise((resolve) => setTimeout(resolve, 650));
 
       if (quizIndex === quizOrder.length - 1) {
+        setRewardPieceIndex(null);
         await playRewardSound();
         await speakText("You earned all four puzzle pieces! Now drag each piece into the empty frame to rebuild your favorite sticker!", 0.96, 1.2);
         setPhase("puzzle");
         return;
       }
 
+      setRewardPieceIndex(null);
+      setFeedback(null);
       setQuizIndex((index) => index + 1);
       return;
     }
@@ -615,15 +621,35 @@ export function LetterGame({
               })}
             </div>
             <AnimatePresence>
-              {feedback === "correct" && favoriteSticker && (
+              {rewardPieceIndex !== null && favoriteSticker && (
                 <motion.div
-                  initial={{ scale: 0, y: 30, rotate: -15 }}
-                  animate={{ scale: 1, y: 0, rotate: 0 }}
-                  exit={{ scale: 0, opacity: 0 }}
-                  className={`absolute right-4 top-4 flex h-24 w-24 flex-col items-center justify-center rounded-2xl border-[4px] border-[#1A2F33] text-4xl shadow-[0_6px_0_#1A2F33] sm:right-8 sm:top-8 ${favoriteSticker.color}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 z-40 flex items-center justify-center bg-[#173D3A]/50 p-4 backdrop-blur-[2px]"
                 >
-                  🧩
-                  <span className="font-fredoka text-xs font-black text-[#1A2F33]">Piece {quizIndex + 1}</span>
+                  <motion.div
+                    initial={{ scale: 0.45, y: 80, rotate: -8 }}
+                    animate={{ scale: 1, y: 0, rotate: 0 }}
+                    exit={{ scale: 0.65, y: -50, opacity: 0 }}
+                    transition={{ type: "spring", bounce: 0.55 }}
+                    className="relative flex w-full max-w-md flex-col items-center rounded-[2.5rem] border-[6px] border-[#1A2F33] bg-white px-6 py-5 text-center shadow-[0_12px_0_#1A2F33]"
+                  >
+                    <motion.span animate={{ scale: [1, 1.35, 1], rotate: [0, 12, -8, 0] }} transition={{ duration: 0.9 }} className="text-6xl" aria-hidden="true">⭐</motion.span>
+                    <h2 className="mt-1 font-fredoka text-4xl font-black text-[#16834B] sm:text-5xl">CORRECT!</h2>
+                    <p className="mt-1 font-fredoka text-lg font-black text-[#1A2F33] sm:text-xl">Correct answer → puzzle reward</p>
+                    <motion.div
+                      initial={{ scale: 0, rotate: -25 }}
+                      animate={{ scale: 1, rotate: [0, 7, 0] }}
+                      transition={{ delay: 0.2, type: "spring", bounce: 0.65 }}
+                      className="relative mt-4 h-32 w-32 overflow-hidden rounded-2xl border-[5px] border-[#1A2F33] shadow-[0_7px_0_#1A2F33] sm:h-40 sm:w-40"
+                    >
+                      <PuzzleSlice sticker={favoriteSticker} pieceIndex={rewardPieceIndex} />
+                    </motion.div>
+                    <p className="mt-4 rounded-full border-[3px] border-[#1A2F33] bg-[#FFEA00] px-5 py-2 font-fredoka text-xl font-black text-[#1A2F33] shadow-[0_4px_0_#1A2F33]">
+                      Puzzle piece {rewardPieceIndex + 1} of {puzzlePieceCount} earned!
+                    </p>
+                  </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>
