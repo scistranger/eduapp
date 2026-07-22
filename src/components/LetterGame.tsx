@@ -25,9 +25,20 @@ const foodStickers: FoodSticker[] = [
   { id: "chocolate", emoji: "🍫", name: "Chocolate", color: "bg-[#D6B08B]" },
   { id: "cookie", emoji: "🍪", name: "Cookie", color: "bg-[#F6C77E]" },
   { id: "strawberry", emoji: "🍓", name: "Strawberry", color: "bg-[#FFB4AE]" },
-  { id: "pineapple-bun", emoji: "🍞", name: "Pineapple Bun", color: "bg-[#FFE69A]" },
-  { id: "mushroom", emoji: "🍄", name: "Mushroom", color: "bg-[#E8D8C9]" },
+  { id: "strawberry-cake", emoji: "🍰", name: "Strawberry Cake", color: "bg-[#FFD1DC]" },
   { id: "peach", emoji: "🍑", name: "Peach", color: "bg-[#FFC9A9]" },
+  { id: "apple", emoji: "🍎", name: "Apple", color: "bg-[#FFB7B2]" },
+  { id: "banana", emoji: "🍌", name: "Banana", color: "bg-[#FFF2A6]" },
+  { id: "watermelon", emoji: "🍉", name: "Watermelon", color: "bg-[#BDECB6]" },
+  { id: "grapes", emoji: "🍇", name: "Grapes", color: "bg-[#D9C2FF]" },
+  { id: "pineapple", emoji: "🍍", name: "Pineapple", color: "bg-[#FFE58A]" },
+  { id: "blueberries", emoji: "🫐", name: "Blueberries", color: "bg-[#C5D5FF]" },
+  { id: "cherries", emoji: "🍒", name: "Cherries", color: "bg-[#FFB3C1]" },
+  { id: "mango", emoji: "🥭", name: "Mango", color: "bg-[#FFD08A]" },
+  { id: "cupcake", emoji: "🧁", name: "Cupcake", color: "bg-[#F7C6E5]" },
+  { id: "ice-cream", emoji: "🍦", name: "Ice Cream", color: "bg-[#D9F2FF]" },
+  { id: "doughnut", emoji: "🍩", name: "Doughnut", color: "bg-[#EAC39C]" },
+  { id: "pudding", emoji: "🍮", name: "Pudding", color: "bg-[#F4C77B]" },
 ];
 
 const introPrompts = [
@@ -37,11 +48,16 @@ const introPrompts = [
   (letter: string) => `Wonderful, it's ${letter.toUpperCase()}! Hear the sound and say it back out loud!`,
 ];
 
+const stickerWithArticle = (name: string, capitalize = false) => {
+  const article = /^[aeiou]/i.test(name) ? "an" : "a";
+  return `${capitalize ? article[0].toUpperCase() + article.slice(1) : article} ${name}`;
+};
+
 const stickerLines = [
-  (name: string) => `WOW! You cracked it open and found a ${name} sticker! That's fantastic!`,
-  (name: string) => `Hooray! A ${name} sticker popped out! I am so happy for you!`,
+  (name: string) => `WOW! You cracked it open and found ${stickerWithArticle(name)} sticker! That's fantastic!`,
+  (name: string) => `Hooray! ${stickerWithArticle(name, true)} sticker popped out! I am so happy for you!`,
   (name: string) => `Amazing! You discovered ${name}! What a brilliant surprise!`,
-  (name: string) => `Yes! Your super sound unlocked a ${name} sticker! Wonderful job!`,
+  (name: string) => `Yes! Your super sound unlocked ${stickerWithArticle(name)} sticker! Wonderful job!`,
 ];
 
 const repeatPrompts = [
@@ -317,8 +333,7 @@ export function LetterGame({
     setFavoriteLocked(true);
     setFavoriteSticker(sticker);
     await playRewardSound();
-    const spokenName = sticker.id === "pineapple-bun" ? "pineapple bun" : sticker.name;
-    await speakText(`Excellent choice! Your ${spokenName} sticker is now a four-piece puzzle. Earn one piece for every correct sound!`, 0.98, 1.22);
+    await speakText(`Excellent choice! Your ${sticker.name} sticker is now a four-piece puzzle. Earn one piece for every correct sound!`, 0.98, 1.22);
     setPhase("quiz");
     setFavoriteLocked(false);
   };
@@ -364,9 +379,9 @@ export function LetterGame({
 
       if (quizIndex === quizOrder.length - 1) {
         setRewardPieceIndex(null);
+        setPhase("puzzle");
         await playRewardSound();
         await speakText("You earned all four puzzle pieces! Now drag each piece into the empty frame to rebuild your favorite sticker!", 0.96, 1.2);
-        setPhase("puzzle");
         return;
       }
 
